@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
         std::cout << "Input video not found." << std::endl;
         return -1;
     }
-
+//
 
     // Initialize the library using United States style license plates.
     // You can use other countries/regions as well (for example: "eu", "au", or "kr")
