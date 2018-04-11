@@ -85,18 +85,17 @@ int main(int argc, const char * argv[]) {
 
 					extractor[0] = line_buffer[9];
 					extractor[1] = line_buffer[10];
-					extractor[2] = '\0';
-					int lat_min_whole = atoi(extractor);
+					extractor[2] = line_buffer[11];
+					extractor[3] = line_buffer[12];
+					extractor[4] = line_buffer[13];
+					extractor[5] = line_buffer[14];
+					extractor[6] = line_buffer[15];
+					extractor[7] = line_buffer[16];
+					extractor[8] = '\0';
 
-					extractor[0] = line_buffer[12];
-					extractor[1] = line_buffer[13];
-					extractor[2] = line_buffer[14];
-					extractor[3] = line_buffer[15];
-					extractor[4] = line_buffer[16];
-					extractor[5] = '\0';
-					int lat_min_fraction = atoi(extractor);
+					double lat_min = atof(extractor);
 
-					float lat = lat_dec + (lat_min_whole + lat_min_fraction / 100000.0) / 60.0;
+					double lat = lat_dec + (lat_min / 60.0);
 					if (line_buffer[18] != 'N')
 					{
 						lat *= -1.0;
@@ -110,18 +109,17 @@ int main(int argc, const char * argv[]) {
 
 					extractor[0] = line_buffer[23];
 					extractor[1] = line_buffer[24];
-					extractor[2] = '\0';
-					int lon_min_whole = atoi(extractor);
+					extractor[2] = line_buffer[25];
+					extractor[3] = line_buffer[26];
+					extractor[4] = line_buffer[27];
+					extractor[5] = line_buffer[28];
+					extractor[6] = line_buffer[29];
+					extractor[7] = line_buffer[30];
+					extractor[8] = '\0';
 
-					extractor[0] = line_buffer[26];
-					extractor[1] = line_buffer[27];
-					extractor[2] = line_buffer[28];
-					extractor[3] = line_buffer[29];
-					extractor[4] = line_buffer[30];
-					extractor[5] = '\0';
-					int lon_min_fraction = atoi(extractor);
+					double lon_min = atof(extractor);
 
-					float lon = lon_dec + (lon_min_whole + lon_min_fraction / 100000.0) / 60.0;
+					double lon = lon_dec + (lon_min / 60.0);
 					if (line_buffer[32] != 'E')
 					{
 						lon *= -1.0;
@@ -140,15 +138,11 @@ int main(int argc, const char * argv[]) {
 
 					extractor[0] = line_buffer[38];
 					extractor[1] = line_buffer[39];
-					extractor[2] = '\0';
-					int sec_whole = atoi(extractor);
-
-					extractor[0] = line_buffer[41];
-					extractor[1] = line_buffer[42];
-					extractor[2] = '\0';
-					int sec_fraction = atoi(extractor);
-
-					float sec = sec_whole + sec_fraction / 100.0;
+					extractor[2] = line_buffer[40];
+					extractor[3] = line_buffer[41];
+					extractor[4] = line_buffer[42];
+					extractor[5] = '\0';
+					double sec = atof(extractor);
 
 					double time = sec + min * 60.0 + hrs * 3600.0;
 
