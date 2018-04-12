@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <alpr.h>
+#include "C920Camera.h"
 
 using namespace cv;
 using namespace alpr;
@@ -15,13 +16,31 @@ int main(int argc, char* argv[]) {
     // Load input video
     //  If your video is in a different source folder than your code,
     //  make sure you specify the directory correctly!
-    VideoCapture input_cap("high_res.avi");
+    //VideoCapture input_cap("high_res.avi");
+
+    v4l2::C920Camera camera;
+    camera.Open("/dev/video1");
+    //VideoCapture input_cap("/dev/video1");
 
     // Check validity of target file
-    if(!input_cap.isOpened()) {
+    if(!camera.IsOpen()) {
         std::cout << "Input video not found." << std::endl;
         return -1;
     }
+
+
+    // Setup web cam
+    int focus = 0;
+    //int gain = 255;
+    camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1920x1080);
+    camera.SetFocus(focus);
+    //camera.SetBacklightCompensation(gain);
+    //camera.SetBrightness(gain);
+    //camera.SetContrast(gain);
+    //camera.SetSaturation(gain);
+    //camera.SetSharpness(gain);
+
+    //camera.SetGain(gain);
 
     // Initialize the library using United States style license plates.
     // You can use other countries/regions as well (for example: "eu", "au", or "kr")
@@ -47,7 +66,10 @@ int main(int argc, char* argv[]) {
     //namedWindow("test", 1);
 
     std::vector<AlprRegionOfInterest> roi;
-    input_cap.read(frame);
+
+    if (camera.GrabFrame()) {
+        camera.RetrieveMat(frame);
+    }
 
     std::ofstream csvLog;
     csvLog.open("output.csv");
@@ -57,15 +79,15 @@ int main(int argc, char* argv[]) {
     Rect rect(frame.cols/2-width/2, frame.rows-height - 200, width, height);
     roi.push_back(AlprRegionOfInterest(rect.x, rect.y, rect.width, rect.height));
     //Size scaledSize(640, 360);
-    int frameCounter = 0;
+    long frameCounter = 0;
     int foundPlateCounter = 0;
     int noPlateCounter = 0;
     std::vector<AlprPlateResult> plateReadings;
 
-    while(input_cap.read(frame)) {
+    while(camera.GrabFrame() && camera.RetrieveMat(frame)) {
         frameCounter++;
 
-        if (frameCounter < 1500) {
+        if (frameCounter < 0) {
             continue;
         }
 
@@ -176,7 +198,7 @@ int main(int argc, char* argv[]) {
 
 
     // free the capture objects from memory
-    input_cap.release();
+    camera.Close();
     csvLog.close();
     return 0;
 }
