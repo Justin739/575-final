@@ -159,7 +159,7 @@ void gps_updater(double *latitude, double *longitude) {
 
                     *latitude = lat;
                     *longitude = lon;
-                    printf("%f:\t%f,%f\n", time, lat, lon);
+                    //printf("%f:\t%f,%f\n", time, lat, lon);
                     //printf("%s\n", line_buffer);
                 }
             }
@@ -196,16 +196,9 @@ int main(int argc, char* argv[]) {
 
     // Setup web cam
     int focus = 0;
-    //int gain = 255;
-    camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1920x1080);
+    //camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1920x1080);
+    camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1280x720);
     camera.SetFocus(focus);
-    //camera.SetBacklightCompensation(gain);
-    //camera.SetBrightness(gain);
-    //camera.SetContrast(gain);
-    //camera.SetSaturation(gain);
-    //camera.SetSharpness(gain);
-
-    //camera.SetGain(gain);
 
     // Initialize the library using United States style license plates.
     // You can use other countries/regions as well (for example: "eu", "au", or "kr")
@@ -249,18 +242,12 @@ int main(int argc, char* argv[]) {
     int noPlateCounter = 0;
     std::vector<AlprPlateResult> plateReadings;
 
-    /*
-    VideoWriter output_cap("helloworld.avi",
-                           input_cap.get(CV_CAP_PROP_FOURCC),
-                           input_cap.get(CV_CAP_PROP_FPS),
-                           Size(input_cap.get(CV_CAP_PROP_FRAME_WIDTH),
-                                input_cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
-    */
+    VideoWriter video("outcpp.avi",CV_FOURCC('M','J','P','G'),30, Size(1280,720));
 
     while(camera.GrabFrame() && camera.RetrieveMat(frame)) {
         frameCounter++;
 
-        output_cap.write(frame);
+        video.write(frame);
 
         if (frameCounter < 0) {
             continue;
@@ -289,11 +276,14 @@ int main(int argc, char* argv[]) {
             float confidenceLevel = currPlate.bestPlate.overall_confidence;
             std::vector<AlprPlate> topPlates = currPlate.topNPlates;
             std::cout << i << " " << licensePlateText << " "<< confidenceLevel << std::endl;
-            plateReadings.push_back(currPlate);
+
+            if (currPlate.bestPlate.overall_confidence > 85) {
+                plateReadings.push_back(currPlate);
+            }
 
             ////////////////////////////// GPS//////////////////////////////////////////
 
-            printf("Latitude: %.10f, Longitude: %.10f\n", latitude, longitude);
+            //printf("Latitude: %.10f, Longitude: %.10f\n", latitude, longitude);
             //std::cout << "Latitude: " << latitude << ", Longitude: " << longitude << std::endl;
 
             ///////////////////////////// END OF GPS ///////////////////////////////////
@@ -350,7 +340,7 @@ int main(int argc, char* argv[]) {
 
                     char mostLikelyChar = (char) std::distance(histogram, std::max_element(histogram, histogram + sizeof(histogram) / sizeof(char)));
 
-                    confidence += plateString[mostLikelyChar] / plateReadings.size();
+                    confidence += histogram[mostLikelyChar] / (double) plateReadings.size();
 
                     plateString[i] = mostLikelyChar;
                     std::fill_n(histogram, sizeof(histogram) / sizeof(char), 0);
@@ -359,16 +349,14 @@ int main(int argc, char* argv[]) {
                 confidence = confidence / licensePlateLen;
 
                 std::cout << "Confidence: " << confidence << std::endl;
-
-                /*
+                std::cout << "Final Result: ";
                 for (int i = 0; i < licensePlateLen; i++) {
                     std::cout << plateString[i];
-                    csvLog << plateString[i];
+                    //csvLog << plateString[i];
                 }
 
                 std::cout << "" << std::endl;
-                csvLog << "\n";
-                */
+                //csvLog << "\n";
 
                 foundPlateCounter = 0;
                 noPlateCounter = 0;
@@ -386,7 +374,7 @@ int main(int argc, char* argv[]) {
         //std::cout << frameCounter << "," << latitude << "," << longitude << "\n" << std::endl;
 
         rectangle(frame, rect, Scalar(255,255,0));
-        imshow("test", frame);
+        //imshow("test", frame);
 
         char keyPressed = waitKey(30);
 
@@ -401,5 +389,6 @@ int main(int argc, char* argv[]) {
     // free the capture objects from memory
     camera.Close();
     csvLog.close();
+    video.release();
     return 0;
 }
