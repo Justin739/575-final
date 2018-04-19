@@ -17,14 +17,232 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <thread>         // std::thread
+#include <stack>
 
 using namespace cv;
 using namespace alpr;
 
-void gps_updater(double *latitude, double *longitude) {
+struct capturedFrame {
+    Mat frame;
+    double latitude;
+    double longitude;
+    int frameCounter;
+};
+
+void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running);
+void capture_frames(std::queue<struct capturedFrame>* capturedFrames, double* latitude, double* longitude, bool* running);
+void gps_updater(double* latitude, double* longitude, bool* running);
+
+void capture_frames(std::queue<struct capturedFrame>* capturedFrames, double* latitude, double* longitude, bool* running) {
+    // Open up the webcam to start capturing frames
+    VideoCapture input_cap("/dev/video1");
+
+    // Ensure the webcam was found and opened
+    if(!input_cap.isOpened()) {
+        std::cout << "Input video not found." << std::endl;
+        return;
+    }
+
+    // Force the capture resolution to be 1920 x 1080 @ 30fps
+    input_cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('M', 'J', 'P', 'G'));
+    input_cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+    input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+
+    // Matrix to store the frame contents temporarily
+    Mat frame;
+
+    // Gather first frame, usually empty by default
+    input_cap.read(frame);
+
+    // Holds the position when the current frame was taken including it contents
+    struct capturedFrame currFrame;
+
+    int frameCounter = 1;
+
+    // Set size of the region of interest
+    int roiWidth = 500;
+    int roiHeight = 400;
+    Rect roiRect((frame.cols / 2) - (roiWidth / 2), frame.rows - roiHeight - 200, roiWidth, roiHeight);
+
+    // Continuously save frames until the webcam has closed
+    while (input_cap.read(frame) && *running) {
+        // Trim frame before copying
+        Mat trimmedFrame(frame, roiRect);
+
+        // Save all information regarding the current frame
+        currFrame.frame = trimmedFrame.clone();
+        currFrame.latitude = *latitude;
+        currFrame.longitude = *longitude;
+        currFrame.frameCounter = frameCounter;
+
+        // Save the frame to the queue
+        capturedFrames->push(currFrame);
+        frameCounter++;
+    }
+
+    input_cap.release();
+}
+
+
+void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running) {
+    // Initialize the library using United States style license plates.
+    // You can use other countries/regions as well (for example: "eu", "au", or "kr")
+    Alpr openalpr("us", "/usr/share/openalpr/config/openalpr.defaults.conf");
+
+    // Optionally specify the top N possible plates to return (with confidences).  Default is 10
+    openalpr.setTopN(5);
+
+    // Optionally, provide the library with a region for pattern matching.  This improves accuracy by
+    // comparing the plate text with the regional pattern.
+    openalpr.setDefaultRegion("ia");
+
+    // Make sure the library loaded before continuing.
+    // For example, it could fail if the config/runtime_data is not found
+    if (!openalpr.isLoaded()) {
+        std::cerr << "Error loading OpenALPR" << std::endl;
+        return;
+    }
+
+    // Region of interest to improve performance
+    std::vector<AlprRegionOfInterest> roi;
+
+    // Center the region of interest and save it into a rectangle object
+    // TODO: Need to read the first frame before being able to initialize ROI
+    while (capturedFrames->empty()) {
+        // Wait for first frame to be taken - break if webcam stops capturing
+        if (!(*running)) {
+            return;
+        }
+    }
+
+    // Save the region to the stack
+    struct capturedFrame firstFrame = capturedFrames->front();
+    Rect rect(0, 0, firstFrame.frame.cols, firstFrame.frame.rows);
+    roi.emplace_back(AlprRegionOfInterest(rect.x, rect.y, rect.width, rect.height));
+    capturedFrames->pop();
+
+    int foundPlateCounter = 0;
+    int noPlateCounter = 0;
+    std::vector<AlprPlateResult> plateReadings;
+
+    while (*running || !capturedFrames->empty()) {
+        if (!capturedFrames->empty()) {
+            // TODO: Debug mode - need to remove
+            if (!(*running)) {
+                std::cout << capturedFrames->size() << std::endl;
+            }
+
+            struct capturedFrame currFrame = capturedFrames->front();
+            Mat frame = currFrame.frame;
+            AlprResults frameResults = openalpr.recognize(frame.data, 3, frame.cols, frame.rows, roi);
+
+            for (int i = 0; i < frameResults.plates.size(); i++) {
+                AlprPlateResult currPlate = frameResults.plates[i];
+                Point topleft(currPlate.plate_points[0].x, currPlate.plate_points[0].y);
+                Point topright(currPlate.plate_points[1].x, currPlate.plate_points[1].y);
+                Point bottomright(currPlate.plate_points[2].x, currPlate.plate_points[2].y);
+                Point bottomleft(currPlate.plate_points[3].x, currPlate.plate_points[3].y);
+                Scalar red(0, 0, 255);
+
+                line(frame, topleft, topright, red);
+                line(frame, topright, bottomright, red);
+                line(frame, bottomright, bottomleft, red);
+                line(frame, bottomleft, topleft, red);
+
+                int xCenter = (currPlate.plate_points[0].x + currPlate.plate_points[1].x + currPlate.plate_points[2].x +
+                               currPlate.plate_points[3].x) / 4;
+                int yCenter = (currPlate.plate_points[0].y + currPlate.plate_points[1].y + currPlate.plate_points[2].y +
+                               currPlate.plate_points[3].y) / 4;
+
+                std::string licensePlateText = currPlate.bestPlate.characters;
+                float confidenceLevel = currPlate.bestPlate.overall_confidence;
+                std::vector<AlprPlate> topPlates = currPlate.topNPlates;
+                std::cout << i << " " << licensePlateText << " " << confidenceLevel << std::endl;
+
+                if (currPlate.bestPlate.overall_confidence > 85) {
+                    plateReadings.push_back(currPlate);
+                }
+            }
+
+            if (frameResults.plates.size() > 0) {
+                foundPlateCounter++;
+                noPlateCounter = 0;
+            } else if (foundPlateCounter > 0) {
+                noPlateCounter++;
+
+                if (noPlateCounter >= 5) {
+                    std::cout << "MIDDLE OF CARS" << std::endl;
+                    // <Process the last car here>
+                    std::vector<char> indivChars[plateReadings.size()];
+                    int licensePlateLen = 0;
+                    std::map<int, int> maxLicenseLen;
+
+                    for (int i = 0; i != plateReadings.size(); i++) {
+                        std::string plateChars = plateReadings[i].bestPlate.characters;
+
+                        if (maxLicenseLen.find((int) plateChars.length()) != maxLicenseLen.end()) {
+                            maxLicenseLen[(int) plateChars.length()]++;
+                        } else {
+                            maxLicenseLen.insert(std::make_pair((int) plateChars.length(), 1));
+                        }
+
+                        for (int j = 0; j < plateChars.length(); j++) {
+                            //std::cout << plateChars[j] << std::endl;
+                            indivChars[i].push_back(plateChars[j]);
+                        }
+                    }
+
+                    std::map<int, int>::iterator iter;
+                    int maxFreq = 0;
+
+                    for (iter = maxLicenseLen.begin(); iter != maxLicenseLen.end(); iter++) {
+                        if (iter->second > maxFreq) {
+                            maxFreq = iter->second;
+                            licensePlateLen = iter->first;
+                        }
+                    }
+
+                    int histogram[128] = {};
+                    char plateString[licensePlateLen] = {};
+                    double confidence = 0;
+
+                    for (int i = 0; i < licensePlateLen; i++) {
+                        for (int j = 0; j < plateReadings.size(); j++) {
+                            if (i < indivChars[j].size()) {
+                                histogram[indivChars[j][i]]++;
+                            }
+                        }
+
+                        auto mostLikelyChar = (char) std::distance(histogram, std::max_element(histogram, histogram +
+                                                                                                          sizeof(histogram) /
+                                                                                                          sizeof(char)));
+                        confidence += histogram[mostLikelyChar] / (double) plateReadings.size();
+                        plateString[i] = mostLikelyChar;
+                        std::fill_n(histogram, sizeof(histogram) / sizeof(char), 0);
+                    }
+
+                    confidence = confidence / licensePlateLen;
+                    std::cout << "Confidence: " << confidence << std::endl;
+                    std::cout << "Final Result: ";
+                    for (int i = 0; i < licensePlateLen; i++) {
+                        std::cout << plateString[i];
+                    }
+
+                    std::cout << "" << std::endl;
+                    foundPlateCounter = 0;
+                    noPlateCounter = 0;
+                    plateReadings.clear();
+                }
+            }
+
+            capturedFrames->pop();
+        }
+    }
+}
+
+void gps_updater(double* latitude, double* longitude, bool* running) {
     char serial_path[120];
     strcpy(serial_path, "/dev/ttyACM0");
-
 
     int ser;
     ser = open(serial_path, O_RDONLY | O_NOCTTY | O_NONBLOCK);
@@ -52,7 +270,7 @@ void gps_updater(double *latitude, double *longitude) {
     int rx_buffer_bytes;
     char line_buffer[1024];
 
-    while(1)
+    while(*running)
     {
         usleep(100000);
 
@@ -163,91 +381,47 @@ void gps_updater(double *latitude, double *longitude) {
                     //printf("%s\n", line_buffer);
                 }
             }
-
         }
-
     }
 }
 
 int main(int argc, char* argv[]) {
-
-    // Load input video
-    //  If your video is in a different source folder than your code,
-    //  make sure you specify the directory correctly!
-    //VideoCapture input_cap("high_res.avi");
-
-    v4l2::C920Camera camera;
-    camera.Open("/dev/video1");
-    //VideoCapture input_cap("/dev/video1");
-
-    // Check validity of target file
-    if(!camera.IsOpen()) {
-        std::cout << "Input video not found." << std::endl;
-        return -1;
-    }
-
-
     double latitude = 0;
     double longitude = 0;
+    bool running = true;
+    std::queue<struct capturedFrame> capturedFrames;
 
-    // Start the thread to update GPS lat/long
-    std::thread gps_thread(gps_updater, &latitude, &longitude);
+    // Start the thread to update GPS lat/long whenever the GPS gets an update
+    std::thread gps_thread(gps_updater, &latitude, &longitude, &running);
+
+    // Start the thread to constantly capture frames and add them to a queue
+    std::thread capture_thread(capture_frames, &capturedFrames, &latitude, &longitude, &running);
+
+    // Start the thread to process frames in the queue
+    std::thread processing_thread(process_frames, &capturedFrames, &running);
+
+    //std::ofstream csvLog;
+    //csvLog.open("output.csv");
 
 
-    // Setup web cam
-    int focus = 0;
-    //camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1920x1080);
-    camera.ChangeCaptureSize(v4l2::CAPTURE_SIZE_1280x720);
-    camera.SetFocus(focus);
-
-    // Initialize the library using United States style license plates.
-    // You can use other countries/regions as well (for example: "eu", "au", or "kr")
-    Alpr openalpr("us", "/usr/share/openalpr/config/openalpr.defaults.conf");
-
-    // Optionally specify the top N possible plates to return (with confidences).  Default is 10
-    openalpr.setTopN(5);
-
-    // Optionally, provide the library with a region for pattern matching.  This improves accuracy by
-    // comparing the plate text with the regional pattern.
-    //openalpr.setDefaultRegion("md");
-
-    // Make sure the library loaded before continuing.
-    // For example, it could fail if the config/runtime_data is not found
-    if (openalpr.isLoaded() == false) {
-        std::cerr << "Error loading OpenALPR" << std::endl;
-        return 1;
-    }
-
-    // Loop to read from input one frame at a time, write text on frame, and
-    // copy to output video
-    Mat frame;
-    //namedWindow("test", 1);
-
-    std::vector<AlprRegionOfInterest> roi;
-
-    if (camera.GrabFrame()) {
-        camera.RetrieveMat(frame);
-    }
-
-    std::ofstream csvLog;
-    csvLog.open("output.csv");
-
-    int width = 500;
-    int height = 400;
-    Rect rect(frame.cols/2-width/2, frame.rows-height - 200, width, height);
-    roi.push_back(AlprRegionOfInterest(rect.x, rect.y, rect.width, rect.height));
+    /*
     //Size scaledSize(640, 360);
     long frameCounter = 0;
     int foundPlateCounter = 0;
     int noPlateCounter = 0;
     std::vector<AlprPlateResult> plateReadings;
 
-    VideoWriter video("outcpp.avi",CV_FOURCC('M','J','P','G'),30, Size(1280,720));
+    VideoWriter output_cap("helloworld.avi",
+                           input_cap.get(CV_CAP_PROP_FOURCC),
+                           input_cap.get(CV_CAP_PROP_FPS),
+                           Size(input_cap.get(CV_CAP_PROP_FRAME_WIDTH),
+                                input_cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
 
-    while(camera.GrabFrame() && camera.RetrieveMat(frame)) {
+    //while(camera.GrabFrame() && camera.RetrieveMat(frame)) {
+    while (input_cap.read(frame)) {
         frameCounter++;
 
-        video.write(frame);
+        output_cap.write(frame);
 
         if (frameCounter < 0) {
             continue;
@@ -374,7 +548,7 @@ int main(int argc, char* argv[]) {
         //std::cout << frameCounter << "," << latitude << "," << longitude << "\n" << std::endl;
 
         rectangle(frame, rect, Scalar(255,255,0));
-        //imshow("test", frame);
+        imshow("test", frame);
 
         char keyPressed = waitKey(30);
 
@@ -384,11 +558,14 @@ int main(int argc, char* argv[]) {
             waitKey(0);
         }
     }
+    */
 
-
-    // free the capture objects from memory
-    camera.Close();
-    csvLog.close();
-    video.release();
+    // Free the capture objects from memory and exit threads
+    capture_thread.join();
+    gps_thread.join();
+    processing_thread.join();
+    //csvLog.close();
+    //output_cap.release();
+    //input_cap.release();
     return 0;
 }
