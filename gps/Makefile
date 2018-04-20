@@ -1,5 +1,5 @@
 all:
 	gcc -o gps gps.c
-	gcc -o geodistrad geodistrad.c
+	gcc -o coord coord.c
 clean:
-	rm -f gps geodistrad
+	rm -f gps coord
