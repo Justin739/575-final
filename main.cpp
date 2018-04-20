@@ -18,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <thread>         // std::thread
 #include <stack>
+#include <sys/time.h>
 
 using namespace cv;
 using namespace alpr;
@@ -30,59 +31,7 @@ struct capturedFrame {
 };
 
 void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running);
-void capture_frames(std::queue<struct capturedFrame>* capturedFrames, double* latitude, double* longitude, bool* running);
 void gps_updater(double* latitude, double* longitude, bool* running);
-
-void capture_frames(std::queue<struct capturedFrame>* capturedFrames, double* latitude, double* longitude, bool* running) {
-    // Open up the webcam to start capturing frames
-    VideoCapture input_cap("/dev/video1");
-
-    // Ensure the webcam was found and opened
-    if(!input_cap.isOpened()) {
-        std::cout << "Input video not found." << std::endl;
-        return;
-    }
-
-    // Force the capture resolution to be 1920 x 1080 @ 30fps
-    input_cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('M', 'J', 'P', 'G'));
-    input_cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
-    input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
-
-    // Matrix to store the frame contents temporarily
-    Mat frame;
-
-    // Gather first frame, usually empty by default
-    input_cap.read(frame);
-
-    // Holds the position when the current frame was taken including it contents
-    struct capturedFrame currFrame;
-
-    int frameCounter = 1;
-
-    // Set size of the region of interest
-    int roiWidth = 500;
-    int roiHeight = 400;
-    Rect roiRect((frame.cols / 2) - (roiWidth / 2), frame.rows - roiHeight - 200, roiWidth, roiHeight);
-
-    // Continuously save frames until the webcam has closed
-    while (input_cap.read(frame) && *running) {
-        // Trim frame before copying
-        Mat trimmedFrame(frame, roiRect);
-
-        // Save all information regarding the current frame
-        currFrame.frame = trimmedFrame.clone();
-        currFrame.latitude = *latitude;
-        currFrame.longitude = *longitude;
-        currFrame.frameCounter = frameCounter;
-
-        // Save the frame to the queue
-        capturedFrames->push(currFrame);
-        frameCounter++;
-    }
-
-    input_cap.release();
-}
-
 
 void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running) {
     // Initialize the library using United States style license plates.
@@ -392,180 +341,61 @@ int main(int argc, char* argv[]) {
     std::queue<struct capturedFrame> capturedFrames;
 
     // Start the thread to update GPS lat/long whenever the GPS gets an update
-    std::thread gps_thread(gps_updater, &latitude, &longitude, &running);
+    //std::thread gps_thread(gps_updater, &latitude, &longitude, &running);
 
-    // Start the thread to constantly capture frames and add them to a queue
-    std::thread capture_thread(capture_frames, &capturedFrames, &latitude, &longitude, &running);
+    // Open up the webcam to start capturing frames
+    VideoCapture input_cap("/dev/video1");
 
-    // Start the thread to process frames in the queue
-    std::thread processing_thread(process_frames, &capturedFrames, &running);
+    // Ensure the webcam was found and opened
+    if(!input_cap.isOpened()) {
+        std::cout << "Input video not found." << std::endl;
+        return 0;
+    }
 
-    //std::ofstream csvLog;
-    //csvLog.open("output.csv");
+    // Force the capture resolution to be 1920 x 1080 @ 30fps
+    input_cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('M', 'J', 'P', 'G'));
+    input_cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
+    input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
 
-
-    /*
-    //Size scaledSize(640, 360);
-    long frameCounter = 0;
-    int foundPlateCounter = 0;
-    int noPlateCounter = 0;
-    std::vector<AlprPlateResult> plateReadings;
-
-    VideoWriter output_cap("helloworld.avi",
+    // Open the output capture
+    VideoWriter output_cap("recorded_video.avi",
                            input_cap.get(CV_CAP_PROP_FOURCC),
                            input_cap.get(CV_CAP_PROP_FPS),
                            Size(input_cap.get(CV_CAP_PROP_FRAME_WIDTH),
                                 input_cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
 
-    //while(camera.GrabFrame() && camera.RetrieveMat(frame)) {
-    while (input_cap.read(frame)) {
-        frameCounter++;
+    // Matrix to store the frame contents temporarily
+    Mat frame;
 
+    // Counts the current frame being shown
+    int frameCounter = 1;
+
+    std::ofstream csvLog;
+    csvLog.open("frame_times.csv");
+
+    // Open a window to detect key presses
+    namedWindow("Display window", WINDOW_AUTOSIZE);
+
+    // Holds the current time
+    timeval tv;
+
+    // Continuously save frames until the webcam has closed
+    while (input_cap.read(frame) && running) {
         output_cap.write(frame);
+        gettimeofday(&tv, NULL);
+        double currTime = tv.tv_sec + (tv.tv_usec / 1000000.0);
+        csvLog << frameCounter << "," << std::setprecision(20) << currTime << "\n";
 
-        if (frameCounter < 0) {
-            continue;
+        if (waitKey(1) == 27) {
+            running = false;
         }
 
-        //resize(frame, frame, scaledSize, 0, 0, INTER_NEAREST);
-        AlprResults frameResults = openalpr.recognize(frame.data, 3, frame.cols, frame.rows, roi);
-
-        for (int i = 0; i < frameResults.plates.size(); i++)
-        {
-            AlprPlateResult currPlate = frameResults.plates[i];
-            Point topleft(currPlate.plate_points[0].x, currPlate.plate_points[0].y);
-            Point topright(currPlate.plate_points[1].x, currPlate.plate_points[1].y);
-            Point bottomright(currPlate.plate_points[2].x, currPlate.plate_points[2].y);
-            Point bottomleft(currPlate.plate_points[3].x, currPlate.plate_points[3].y);
-            Scalar red(0,0,255);
-
-            //rectangle(frame, Rect(x_p, y_p, width_p, height_p), Scalar(0,0,255));
-
-            line(frame, topleft, topright, red);
-            line(frame, topright, bottomright, red);
-            line(frame, bottomright, bottomleft, red);
-            line(frame, bottomleft, topleft, red);
-
-            std::string licensePlateText = currPlate.bestPlate.characters;
-            float confidenceLevel = currPlate.bestPlate.overall_confidence;
-            std::vector<AlprPlate> topPlates = currPlate.topNPlates;
-            std::cout << i << " " << licensePlateText << " "<< confidenceLevel << std::endl;
-
-            if (currPlate.bestPlate.overall_confidence > 85) {
-                plateReadings.push_back(currPlate);
-            }
-
-            ////////////////////////////// GPS//////////////////////////////////////////
-
-            //printf("Latitude: %.10f, Longitude: %.10f\n", latitude, longitude);
-            //std::cout << "Latitude: " << latitude << ", Longitude: " << longitude << std::endl;
-
-            ///////////////////////////// END OF GPS ///////////////////////////////////
-        }
-
-        if (frameResults.plates.size() > 0) {
-            foundPlateCounter++;
-            noPlateCounter = 0;
-        } else if (foundPlateCounter > 0) {
-            noPlateCounter++;
-
-            if (noPlateCounter >= 5) {
-                //std::cout << "MIDDLE OF CARS" << std::endl;
-                // <Process the last car here>
-                std::vector<char> indivChars[plateReadings.size()];
-                int licensePlateLen = 0;
-                std::map<int, int> maxLicenseLen;
-
-                for (int i = 0; i != plateReadings.size(); i++) {
-                    std::string plateChars = plateReadings[i].bestPlate.characters;
-
-                    if (maxLicenseLen.find((int) plateChars.length()) != maxLicenseLen.end()) {
-                        maxLicenseLen[(int) plateChars.length()]++;
-                    } else {
-                        maxLicenseLen.insert(std::make_pair((int) plateChars.length(), 1));
-                    }
-
-                    for (int j = 0; j < plateChars.length(); j++) {
-                        //std::cout << plateChars[j] << std::endl;
-                        indivChars[i].push_back(plateChars[j]);
-                    }
-                }
-
-                std::map<int, int>::iterator iter;
-                int maxFreq = 0;
-
-                for (iter = maxLicenseLen.begin(); iter != maxLicenseLen.end(); iter++) {
-                    if (iter->second > maxFreq) {
-                        maxFreq = iter->second;
-                        licensePlateLen = iter->first;
-                    }
-                }
-
-                char histogram[128] = {};
-                char plateString[licensePlateLen] = {};
-                double confidence = 0;
-
-                for (int i = 0; i < licensePlateLen; i++) {
-                    for (int j = 0; j < plateReadings.size(); j++) {
-                        if (i < indivChars[j].size()) {
-                            histogram[indivChars[j][i]]++;
-                        }
-                    }
-
-                    char mostLikelyChar = (char) std::distance(histogram, std::max_element(histogram, histogram + sizeof(histogram) / sizeof(char)));
-
-                    confidence += histogram[mostLikelyChar] / (double) plateReadings.size();
-
-                    plateString[i] = mostLikelyChar;
-                    std::fill_n(histogram, sizeof(histogram) / sizeof(char), 0);
-                }
-
-                confidence = confidence / licensePlateLen;
-
-                std::cout << "Confidence: " << confidence << std::endl;
-                std::cout << "Final Result: ";
-                for (int i = 0; i < licensePlateLen; i++) {
-                    std::cout << plateString[i];
-                    //csvLog << plateString[i];
-                }
-
-                std::cout << "" << std::endl;
-                //csvLog << "\n";
-
-                foundPlateCounter = 0;
-                noPlateCounter = 0;
-                plateReadings.clear();
-            }
-        }
-
-        csvLog << std::setprecision(10) << frameCounter;
-        csvLog << ",";
-        csvLog << std::setprecision(10) << latitude;
-        csvLog << ",";
-        csvLog << std::setprecision(10) << longitude;
-        csvLog << "\n";
-
-        //std::cout << frameCounter << "," << latitude << "," << longitude << "\n" << std::endl;
-
-        rectangle(frame, rect, Scalar(255,255,0));
-        imshow("test", frame);
-
-        char keyPressed = waitKey(30);
-
-        if (keyPressed == 27) {
-            break;
-        } else if (keyPressed == 32) {
-            waitKey(0);
-        }
+        frameCounter++;
     }
-    */
 
-    // Free the capture objects from memory and exit threads
-    capture_thread.join();
-    gps_thread.join();
-    processing_thread.join();
-    //csvLog.close();
-    //output_cap.release();
-    //input_cap.release();
+    input_cap.release();
+    output_cap.release();
+    csvLog.close();
+    //gps_thread.join();
     return 0;
 }
