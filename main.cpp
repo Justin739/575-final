@@ -1,3 +1,7 @@
+#include "Capturer.h"
+#include "Processor.h"
+
+/*
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -6,7 +10,6 @@
 #include <iostream>
 #include <fstream>
 #include <alpr.h>
-#include "C920Camera.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -18,20 +21,13 @@
 #include <sys/ioctl.h>
 #include <thread>         // std::thread
 #include <stack>
+
 #include <sys/time.h>
 
 using namespace cv;
 using namespace alpr;
 
-struct capturedFrame {
-    Mat frame;
-    double latitude;
-    double longitude;
-    int frameCounter;
-};
-
 void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running);
-void gps_updater(double* latitude, double* longitude, bool* running);
 
 void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* running) {
     // Initialize the library using United States style license plates.
@@ -188,214 +184,29 @@ void process_frames(std::queue<struct capturedFrame>* capturedFrames, bool* runn
         }
     }
 }
+*/
+void monitorStop(Capturer* cap) {
+    // Open a window to detect key presses
+    cv::namedWindow("Stopper Window", cv::WINDOW_AUTOSIZE);
 
-void gps_updater(double* latitude, double* longitude, bool* running) {
-    char serial_path[120];
-    strcpy(serial_path, "/dev/ttyACM0");
-
-    int ser;
-    ser = open(serial_path, O_RDONLY | O_NOCTTY | O_NONBLOCK);
-    if (ser == -1) {
-        fprintf(stderr, "opening serial port %s failed: %s\n", serial_path, strerror(errno));
-        printf("hint: is the power on and the usb plugged in?\n");
-        exit(1);
-    }
-
-    //fcntl(ser, F_SETFL, 0);
-
-    struct termios options;
-    tcgetattr(ser, &options);
-    cfsetispeed(&options, B115200);
-    cfsetospeed(&options, B115200);
-    options.c_cflag |= (CLOCAL | CREAD);
-    options.c_cflag &= ~CSIZE;
-    options.c_cflag |= CS8;
-    options.c_cflag &= ~PARENB;
-    options.c_cflag &= ~CSTOPB;
-    options.c_cflag |= CRTSCTS;
-    tcsetattr(ser, TCSAFLUSH, &options);
-
-    char rx_buffer[4096];
-    int rx_buffer_bytes;
-    char line_buffer[1024];
-
-    while(*running)
-    {
-        usleep(100000);
-
-        ioctl(ser, FIONREAD, &rx_buffer_bytes);
-        read(ser, rx_buffer, rx_buffer_bytes);
-        char c;
-        int start = 0;
-        int end = 0;
-        int i;
-        for (i = 0; i < rx_buffer_bytes; i++)
-        {
-            c = rx_buffer[i];
-            if (c == '\n')
-            {
-                end = i;
-                int j;
-                for (j = start; j < end; j++);
-                memcpy(line_buffer, &rx_buffer[start], end - start);
-                line_buffer[end-start-1] = '\0';
-                start = end + 1;
-
-                //printf("%s\n", line_buffer);
-
-                // process line buffer
-                if (strncmp(line_buffer, "$GPGLL", 6) == 0) {
-                    // Position data: position fix, time of position fix, and status
-                    // $GPGLL,4202.38085,N,09338.50822,W,004402.00,A,D*72
-                    // 0 	Message ID $GPGLL
-                    // 1 	Latitude in dd mm,mmmm format (0-7 decimal places)
-                    // 2 	Direction of latitude N: North S: South
-                    // 3 	Longitude in ddd mm,mmmm format (0-7 decimal places)
-                    // 4 	Direction of longitude E: East W: West
-                    // 5 	UTC of position in hhmmss.ss format
-                    // 6 	Fixed text "A" shows that data is valid
-                    // 7 	The checksum data, always begins with *
-                    char extractor[16];
-                    extractor[0] = line_buffer[7];
-                    extractor[1] = line_buffer[8];
-                    extractor[2] = '\0';
-                    int lat_dec = atoi(extractor);
-
-                    extractor[0] = line_buffer[9];
-                    extractor[1] = line_buffer[10];
-                    extractor[2] = line_buffer[11];
-                    extractor[3] = line_buffer[12];
-                    extractor[4] = line_buffer[13];
-                    extractor[5] = line_buffer[14];
-                    extractor[6] = line_buffer[15];
-                    extractor[7] = line_buffer[16];
-                    extractor[8] = '\0';
-
-                    double lat_min = atof(extractor);
-
-                    double lat = lat_dec + (lat_min / 60.0);
-                    if (line_buffer[18] != 'N')
-                    {
-                        lat *= -1.0;
-                    }
-
-                    extractor[0] = line_buffer[20];
-                    extractor[1] = line_buffer[21];
-                    extractor[2] = line_buffer[22];
-                    extractor[3] = '\0';
-                    int lon_dec = atoi(extractor);
-
-                    extractor[0] = line_buffer[23];
-                    extractor[1] = line_buffer[24];
-                    extractor[2] = line_buffer[25];
-                    extractor[3] = line_buffer[26];
-                    extractor[4] = line_buffer[27];
-                    extractor[5] = line_buffer[28];
-                    extractor[6] = line_buffer[29];
-                    extractor[7] = line_buffer[30];
-                    extractor[8] = '\0';
-
-                    double lon_min = atof(extractor);
-
-                    double lon = lon_dec + (lon_min / 60.0);
-                    if (line_buffer[32] != 'E')
-                    {
-                        lon *= -1.0;
-                    }
-
-                    // hhmmss.ss
-                    extractor[0] = line_buffer[34];
-                    extractor[1] = line_buffer[35];
-                    extractor[2] = '\0';
-                    int hrs = atoi(extractor);
-
-                    extractor[0] = line_buffer[36];
-                    extractor[1] = line_buffer[37];
-                    extractor[2] = '\0';
-                    int min = atoi(extractor);
-
-                    extractor[0] = line_buffer[38];
-                    extractor[1] = line_buffer[39];
-                    extractor[2] = line_buffer[40];
-                    extractor[3] = line_buffer[41];
-                    extractor[4] = line_buffer[42];
-                    extractor[5] = '\0';
-                    double sec = atof(extractor);
-
-                    double time = sec + min * 60.0 + hrs * 3600.0;
-
-                    *latitude = lat;
-                    *longitude = lon;
-                    //printf("%f:\t%f,%f\n", time, lat, lon);
-                    //printf("%s\n", line_buffer);
-                }
-            }
-        }
+    if (cv::waitKey(0) == 27) {
+        std::cout << "--- Stopping capture ---" << std::endl;
+        cap->stopCapture();
     }
 }
 
 int main(int argc, char* argv[]) {
-    double latitude = 0;
-    double longitude = 0;
-    bool running = true;
-    std::queue<struct capturedFrame> capturedFrames;
+    /*
+    Capturer cap("/dev/video1", "recorded_video.avi", "frame_times.csv");
+    std::thread stopper_thread(monitorStop, &cap);
 
-    // Start the thread to update GPS lat/long whenever the GPS gets an update
-    //std::thread gps_thread(gps_updater, &latitude, &longitude, &running);
+    std::cout << "--- Starting capture ---" << std::endl;
+    cap.startCapture();
+    stopper_thread.join();
+     */
 
-    // Open up the webcam to start capturing frames
-    VideoCapture input_cap("/dev/video1");
+    Processor proc("recorded_video.avi", "processed_video.avi", "frame_times.csv", "raw_log.txt");
+    proc.processData();
 
-    // Ensure the webcam was found and opened
-    if(!input_cap.isOpened()) {
-        std::cout << "Input video not found." << std::endl;
-        return 0;
-    }
-
-    // Force the capture resolution to be 1920 x 1080 @ 30fps
-    input_cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('M', 'J', 'P', 'G'));
-    input_cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
-    input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
-
-    // Open the output capture
-    VideoWriter output_cap("recorded_video.avi",
-                           input_cap.get(CV_CAP_PROP_FOURCC),
-                           input_cap.get(CV_CAP_PROP_FPS),
-                           Size(input_cap.get(CV_CAP_PROP_FRAME_WIDTH),
-                                input_cap.get(CV_CAP_PROP_FRAME_HEIGHT)));
-
-    // Matrix to store the frame contents temporarily
-    Mat frame;
-
-    // Counts the current frame being shown
-    int frameCounter = 1;
-
-    std::ofstream csvLog;
-    csvLog.open("frame_times.csv");
-
-    // Open a window to detect key presses
-    namedWindow("Display window", WINDOW_AUTOSIZE);
-
-    // Holds the current time
-    timeval tv;
-
-    // Continuously save frames until the webcam has closed
-    while (input_cap.read(frame) && running) {
-        output_cap.write(frame);
-        gettimeofday(&tv, NULL);
-        double currTime = tv.tv_sec + (tv.tv_usec / 1000000.0);
-        csvLog << frameCounter << "," << std::setprecision(20) << currTime << "\n";
-
-        if (waitKey(1) == 27) {
-            running = false;
-        }
-
-        frameCounter++;
-    }
-
-    input_cap.release();
-    output_cap.release();
-    csvLog.close();
-    //gps_thread.join();
     return 0;
 }
