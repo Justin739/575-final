@@ -18,6 +18,13 @@ struct frameData {
     double frameTime;
 };
 
+struct coord {
+    double lat;
+    double lon;
+    double timestamp;
+    int valid;
+};
+
 class Processor {
     std::string inputVideoFile;
     std::string outputVideoFile;
