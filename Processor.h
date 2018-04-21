@@ -12,6 +12,8 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <fstream>
+#include <alpr.h>
+#include <algorithm>
 
 struct frameData {
     int frameNum;
