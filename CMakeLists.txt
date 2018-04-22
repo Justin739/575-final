@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.9)
 project(575_Final_Project)
 
 set(CMAKE_CXX_STANDARD 11)
-add_executable(575_Final_Project main.cpp Capturer.cpp Capturer.h coord.c Processor.cpp Processor.h)
+add_executable(575_Final_Project main.cpp Capturer.cpp Capturer.h Processor.cpp Processor.h utils.h)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(OpenALPR REQUIRED openalpr)

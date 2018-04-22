@@ -15,13 +15,7 @@
 #include <sys/time.h>
 #include <iomanip>
 #include <thread>
-/*
-#include <termios.h>
-#include <cerrno>
-#include <fcntl.h>
-#include <cstring>
-#include <unistd.h>
-#include <sys/ioctl.h>
+#include <mutex>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,8 +28,8 @@
 #include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
-#include <pthread.h>
-*/
+#include "utils.h"
+
 class Capturer {
     bool running;
     std::string inputDevice;

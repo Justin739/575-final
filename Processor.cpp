@@ -129,10 +129,10 @@ void Processor::processData() {
             int yCenter = (currPlate.plate_points[0].y + currPlate.plate_points[1].y + currPlate.plate_points[2].y +
                            currPlate.plate_points[3].y) / 4;
 
-            double plateDistance = distance(topleft, topright, bottomleft, bottomright);
+            struct distanceReading plateDistance = distance(topleft, topright, bottomleft, bottomright);
 
             //std::cout << topleft.x << ", " << topleft.y << ", " << topright.x << ", " << topright.y << ", " << bottomleft.x << ", " << bottomleft.y << ", " << bottomright.x << ", " << bottomright.y << std::endl;
-            //std::cout << "License Plate Distance: " << std::setprecision(20) << plateDistance << std::endl;
+            std::cout << "License Plate Distance: " << std::setprecision(20) << plateDistance.distance << std::endl;
 
             std::string licensePlateText = currPlate.bestPlate.characters;
             float confidenceLevel = currPlate.bestPlate.overall_confidence;
@@ -249,28 +249,17 @@ struct coord Processor::getGPSData(std::string line) {
     return lineData;
 }
 
-double Processor::distance(cv::Point topleft, cv::Point topright, cv::Point bottomleft,
+struct distanceReading Processor::distance(cv::Point topleft, cv::Point topright, cv::Point bottomleft,
                                         cv::Point bottomright) {
     double distance = 0;
-    double height=((bottomleft.y-topleft.y)+(bottomright.y-topright.y)) / 2;
-    double width=((topright.x-topleft.x)+(bottomright.x-bottomleft.x)) / 2;
+    double height=((bottomleft.y-topleft.y)+(bottomright.y-topright.y)) / 2.0;
+    double width=((topright.x-topleft.x)+(bottomright.x-bottomleft.x)) / 2.0;
     double diagonal=sqrt(height*height+width*width);
-    //ideal ratio=2 length/width
-    int plateRatio=height/width;
-    double error=0.5;
-
-    if (plateRatio-2<error){
-        //diagonal vs distance calculation
-        distance=3509.92*pow((1/diagonal),1.30719);
-        //width vs distance calculation
-        //distance=3057.56*pow((1/width),1.30719);
-        //height vs distance calculation
-        //distance=1209.22*pow((1/height),1.31062);
-        //height*width vs distance calculation
-        //distance=1923.99*pow((1/(width*height)),0.65445);
-    }
-
-    return distance;
+    double plateRatio=width / height;
+    struct distanceReading plateReading;
+    plateReading.sizeRatio = plateRatio;
+    plateReading.distance = 446.909*pow(1/diagonal,0.99108);
+    return plateReading;
 }
 
 struct plateResult Processor::getBestPlate(std::vector<alpr::AlprPlateResult> plateReadings) {

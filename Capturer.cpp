@@ -3,7 +3,6 @@
 //
 
 #include "Capturer.h"
-//#include "coord.c"
 
 Capturer::Capturer(std::string camera, std::string videoName, std::string csvName) {
     inputDevice = camera;
@@ -12,25 +11,6 @@ Capturer::Capturer(std::string camera, std::string videoName, std::string csvNam
 }
 
 void Capturer::startCapture() {
-
-    /*
-    int gps_fd = gps_init("/dev/ttyACM0");
-    struct gps_worker_struct gps_args;
-    gps_args.gps_fd = gps_fd;
-    pthread_mutex_lock(&gps_args.lock);
-    pthread_t gps_thread;
-    pthread_create(&gps_thread, NULL, gps_worker, (void*)&gps_args);
-
-    struct coord current;
-
-    char log_string_buffer[64];
-    */
-
-
-
-    // Start the thread to update GPS lat/long whenever the GPS gets an update
-    //std::thread gps_thread(updateGPS);
-
     // Open up the webcam to start capturing frames
     cv::VideoCapture input_cap(inputDevice);
 
@@ -73,28 +53,14 @@ void Capturer::startCapture() {
         output_cap.write(frame);
         gettimeofday(&tv, nullptr);
         double currTime = tv.tv_sec + (tv.tv_usec / 1000000.0);
-
-        /*
-        pthread_mutex_lock(&gps_args.lock);
-        current = gps_get_instant(&gps_args);
-        pthread_mutex_unlock(&gps_args.lock);
-        usleep(25000);
-        */
-
-        //csvLog << frameCounter << "," << std::setprecision(20) << currTime << "," << current.lat << "," << current.lon << "," << current.timestamp << "\n";
         csvLog << frameCounter << "," << std::setprecision(20) << currTime << "\n";
         frameCounter++;
     }
 
-    //gps_args.running = 0;
-
     std::cout << "--- Capture stopped ---" << std::endl;
-
     input_cap.release();
     output_cap.release();
     csvLog.close();
-    //pthread_join(gps_thread, NULL);
-    //gps_thread.join();
 }
 
 void Capturer::stopCapture() {
