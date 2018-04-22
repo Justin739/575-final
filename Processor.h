@@ -15,6 +15,10 @@
 #include <alpr.h>
 #include <algorithm>
 
+
+#define deg_to_rad(deg) (deg * M_PI / 180.0)
+#define rad_to_deg(rad) (rad * 180.0 / M_PI)
+
 struct frameData {
     int frameNum;
     double frameTime;
@@ -25,6 +29,19 @@ struct coord {
     double lon;
     double timestamp;
     int valid;
+};
+
+struct plateResult {
+    double confidence;
+    std::string plateText;
+};
+
+struct positionReading {
+    double latitude;
+    double longitude;
+    double time;
+    cv::Point center;
+    double distance;
 };
 
 class Processor {
@@ -40,6 +57,12 @@ public:
 private:
     struct frameData getFrameData(std::string line);
     struct coord getGPSData(std::string line);
+    double distance(cv::Point topleft, cv::Point topright, cv::Point bottomleft, cv::Point bottomright);
+    struct plateResult getBestPlate(std::vector<alpr::AlprPlateResult> plateReadings);
+    double coord_course(struct coord origin, struct coord destination);
+    struct coord coord_dist_radial(struct coord origin, double distance, double radial);
+    double coord_distance(struct coord origin, struct coord destination);
+    struct coord coord_interpolate(struct coord prev, struct coord next, double timenow);
 };
 
 

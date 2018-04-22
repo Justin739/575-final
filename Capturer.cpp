@@ -44,6 +44,7 @@ void Capturer::startCapture() {
     input_cap.set(CV_CAP_PROP_FOURCC, CV_FOURCC('M', 'J', 'P', 'G'));
     input_cap.set(CV_CAP_PROP_FRAME_WIDTH, 1920);
     input_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 1080);
+    input_cap.set(CV_CAP_PROP_AUTOFOCUS, 0);
 
     // Open the output capture
     cv::VideoWriter output_cap(outputVideo,

@@ -82,22 +82,25 @@ void Processor::processData() {
     inputCapture.read(frame);
 
     int width = 500;
-    int height = 400;
-    cv::Rect rect((frame.cols / 2) - (width / 2), frame.rows - height - 200, width, height);
+    int height = 600;
+    cv::Rect rect((frame.cols / 2) - (width / 2), frame.rows - height - 100, width, height);
     roi.push_back(alpr::AlprRegionOfInterest(rect.x, rect.y, rect.width, rect.height));
 
     int foundPlateCounter = 0;
     int noPlateCounter = 0;
     std::vector<alpr::AlprPlateResult> plateReadings;
+    std::vector<struct positionReading> positionReadings;
+    int currFrame = 1;
 
     while (inputCapture.read(frame)) {
-        if (frameFileStream.is_open()) {
-            std::cout << "File stream is open" << std::endl;
-        } else {
-            std::cout << "File NOT open" << std::endl;
-        }
         std::getline(frameFileStream, frameLine);
         struct frameData currFrameData = getFrameData(frameLine);
+
+        if (currFrameData.frameNum != currFrame) {
+            // Something went wrong, keep reading till frames align
+            std::cout << "Error: Frames don't align" << std::endl;
+            continue;
+        }
 
         if (currFrameData.frameTime > nextGPSData.timestamp) {
             prevGPSData = nextGPSData;
@@ -105,13 +108,8 @@ void Processor::processData() {
             nextGPSData = getGPSData(gpsLine);
         }
 
-        std::cout << "Frame Number: " << std::setprecision(20) << currFrameData.frameNum << std::endl;
-        std::cout << "Frame Time: " << std::setprecision(20) << currFrameData.frameTime << std::endl;
-        //std::cout << "Prev GPS Time: " << std::setprecision(20) << prevGPSData.timestamp << std::endl;
-        //std::cout << "Next GPS Time: " << std::setprecision(20) << nextGPSData.timestamp << std::endl;
-
+        struct coord currentPos = coord_interpolate(prevGPSData, nextGPSData, currFrameData.frameTime);
         alpr::AlprResults frameResults = openalpr.recognize(frame.data, 3, frame.cols, frame.rows, roi);
-
 
         for (int i = 0; i < frameResults.plates.size(); i++) {
             alpr::AlprPlateResult currPlate = frameResults.plates[i];
@@ -131,6 +129,11 @@ void Processor::processData() {
             int yCenter = (currPlate.plate_points[0].y + currPlate.plate_points[1].y + currPlate.plate_points[2].y +
                            currPlate.plate_points[3].y) / 4;
 
+            double plateDistance = distance(topleft, topright, bottomleft, bottomright);
+
+            //std::cout << topleft.x << ", " << topleft.y << ", " << topright.x << ", " << topright.y << ", " << bottomleft.x << ", " << bottomleft.y << ", " << bottomright.x << ", " << bottomright.y << std::endl;
+            //std::cout << "License Plate Distance: " << std::setprecision(20) << plateDistance << std::endl;
+
             std::string licensePlateText = currPlate.bestPlate.characters;
             float confidenceLevel = currPlate.bestPlate.overall_confidence;
             std::vector<alpr::AlprPlate> topPlates = currPlate.topNPlates;
@@ -139,6 +142,17 @@ void Processor::processData() {
             if (currPlate.bestPlate.overall_confidence > 85) {
                 plateReadings.push_back(currPlate);
             }
+
+            struct positionReading currPosition;
+            currPosition.distance = plateDistance;
+            currPosition.longitude = currentPos.lon;
+            currPosition.latitude = currentPos.lat;
+            currPosition.time = currentPos.timestamp;
+            cv::Point centerPos;
+            centerPos.x = xCenter;
+            centerPos.y = yCenter;
+            currPosition.center = centerPos;
+            positionReadings.push_back(currPosition);
         }
 
 
@@ -150,73 +164,13 @@ void Processor::processData() {
 
             if (noPlateCounter >= 5) {
                 std::cout << "MIDDLE OF CARS" << std::endl;
-                // <Process the last car here>
-                std::vector<char> indivChars[plateReadings.size()];
-                int licensePlateLen = 0;
-                std::map<int, int> maxLicenseLen;
-
-                for (int i = 0; i < plateReadings.size(); i++) {
-                    std::string plateChars = plateReadings[i].bestPlate.characters;
-
-                    if (maxLicenseLen.find((int) plateChars.length()) != maxLicenseLen.end()) {
-                        maxLicenseLen[(int) plateChars.length()]++;
-                    } else {
-                        maxLicenseLen.insert(std::make_pair((int) plateChars.length(), 1));
-                    }
-
-                    for (int j = 0; j < plateChars.length(); j++) {
-                        //std::cout << plateChars[j] << std::endl;
-                        indivChars[i].push_back(plateChars[j]);
-                    }
-                }
-
-                std::map<int, int>::iterator iter;
-                int maxFreq = 0;
-
-                for (iter = maxLicenseLen.begin(); iter != maxLicenseLen.end(); iter++) {
-                    if (iter->second > maxFreq) {
-                        maxFreq = iter->second;
-                        licensePlateLen = iter->first;
-                    }
-                }
-
-                int histogram[128] = {};
-                char plateString[licensePlateLen] = {};
-                double confidence = 0;
-
-                for (int i = 0; i < licensePlateLen; i++) {
-                    for (int j = 0; j < plateReadings.size(); j++) {
-                        if (i < indivChars[j].size()) {
-                            histogram[indivChars[j][i]]++;
-                        }
-                    }
-
-                    int maxFreq = 0;
-                    char mostLikelyChar = 0;
-
-                    for (char histoIter = 0; histoIter < (sizeof(histogram) / sizeof(char)); histoIter++) {
-                        if (histogram[histoIter] > maxFreq) {
-                            maxFreq = histogram[histoIter];
-                            mostLikelyChar = histoIter;
-                        }
-                    }
-
-                    confidence += histogram[mostLikelyChar] / (double) plateReadings.size();
-                    plateString[i] = mostLikelyChar;
-                    std::fill_n(histogram, sizeof(histogram) / sizeof(char), 0);
-                }
-
-                confidence = confidence / licensePlateLen;
-                std::cout << "Confidence: " << confidence << std::endl;
-                std::cout << "Final Result: ";
-                for (int i = 0; i < licensePlateLen; i++) {
-                    std::cout << plateString[i];
-                }
-
-                std::cout << "" << std::endl;
+                struct plateResult avgPlateResult = getBestPlate(plateReadings);
+                std::cout << "Confidence: " << avgPlateResult.confidence << std::endl;
+                std::cout << "Final Result: " << avgPlateResult.plateText << std::endl;
                 foundPlateCounter = 0;
                 noPlateCounter = 0;
                 plateReadings.clear();
+                positionReadings.clear();
             }
         }
 
@@ -236,6 +190,7 @@ void Processor::processData() {
         }
 
         outputWriter.write(frame);
+        currFrame++;
     }
 
     inputCapture.release();
@@ -292,4 +247,193 @@ struct coord Processor::getGPSData(std::string line) {
     }
 
     return lineData;
+}
+
+double Processor::distance(cv::Point topleft, cv::Point topright, cv::Point bottomleft,
+                                        cv::Point bottomright) {
+    double distance = 0;
+    double height=((bottomleft.y-topleft.y)+(bottomright.y-topright.y)) / 2;
+    double width=((topright.x-topleft.x)+(bottomright.x-bottomleft.x)) / 2;
+    double diagonal=sqrt(height*height+width*width);
+    //ideal ratio=2 length/width
+    int plateRatio=height/width;
+    double error=0.5;
+
+    if (plateRatio-2<error){
+        //diagonal vs distance calculation
+        distance=3509.92*pow((1/diagonal),1.30719);
+        //width vs distance calculation
+        //distance=3057.56*pow((1/width),1.30719);
+        //height vs distance calculation
+        //distance=1209.22*pow((1/height),1.31062);
+        //height*width vs distance calculation
+        //distance=1923.99*pow((1/(width*height)),0.65445);
+    }
+
+    return distance;
+}
+
+struct plateResult Processor::getBestPlate(std::vector<alpr::AlprPlateResult> plateReadings) {
+    struct plateResult bestPlate;
+    int maxLength = 0;
+
+    // find the max length
+    for (alpr::AlprPlateResult indivPlateResult : plateReadings) {
+        std::string plateString = indivPlateResult.bestPlate.characters;
+
+        if (maxLength < plateString.size()) {
+            maxLength = (int) plateString.size();
+        }
+    }
+
+    // allocate array for lenght frequency (lenght + 1 because need to account for no lenght)
+    std::vector<int> lengthFrequency(maxLength + 1, 0);
+
+
+    // calculate lenght frequency from each reading
+    for (alpr::AlprPlateResult indivPlateResult : plateReadings) {
+        std::string plateString = indivPlateResult.bestPlate.characters;
+        lengthFrequency[plateString.size()]++;
+    }
+
+
+    // get index of the most frequent length (index of the maximum element)
+    int likelyLength = (int) std::distance(std::begin(lengthFrequency), std::max_element(std::begin(lengthFrequency), std::end(lengthFrequency)));
+
+    // string to hold most probable plate string
+    std::string result;
+
+
+    // confidence measure
+    double confidence = 0.0;
+
+
+    // create a histogram of letter frequencies in a column
+    for (int i = 0; i< likelyLength; i++)
+    {
+        // create zeroed letter frequency counter
+        std::vector<int> columnLetterFrequency(std::vector<int>(256, 0));
+
+
+        // iterate through nth letter of the plate to calculate frequency
+        int currentIndex = 0;
+        for (alpr::AlprPlateResult indivPlateResult : plateReadings) {
+            std::string plateString = indivPlateResult.bestPlate.characters;
+
+            // only read character if it exists in the string (some plates are shorter)
+            if (currentIndex <= plateString.size() - 1)
+            {
+                // update frequency result
+                columnLetterFrequency[plateString[i]]++;
+            }
+        }
+
+
+        // figure out most likely character (maximum value of the array)
+        int likelyChar = (int) std::distance(std::begin(columnLetterFrequency), std::max_element(std::begin(columnLetterFrequency), std::end(columnLetterFrequency)));
+
+
+        // calculate individual letter confidence factor to the confidence sum
+        confidence += (double) columnLetterFrequency[likelyChar] / (double) plateReadings.size();
+
+
+        // add most likely character into the final string
+        result.push_back((char) likelyChar);
+    }
+
+
+    // average the confidence sum of all the individual letters
+    confidence = confidence / (double) likelyLength;
+    bestPlate.confidence = confidence;
+    bestPlate.plateText = result;
+    return bestPlate;
+}
+
+struct coord Processor::coord_interpolate(struct coord prev, struct coord next, double timenow)
+{
+    /* create coordinate to hold the result */
+    struct coord interpolated;
+
+    double distance = coord_distance(prev, next);
+    double course = coord_course(prev, next);
+    double speed = distance / (next.timestamp - prev.timestamp);
+
+    double time_new = timenow - prev.timestamp;
+    double distance_new = speed * time_new;
+
+    interpolated = coord_dist_radial(prev, distance_new, course);
+    interpolated.timestamp = timenow;
+    interpolated.valid = 2;
+
+    /* return result */
+    return interpolated;
+}
+
+double Processor::coord_distance(struct coord origin, struct coord destination)
+{
+    /* convert coordinates to radians */
+    origin.lat=deg_to_rad(origin.lat);
+    origin.lon=deg_to_rad(origin.lon);
+    destination.lat=deg_to_rad(destination.lat);
+    destination.lon=deg_to_rad(destination.lon);
+
+    /* formula from http://www.edwilliams.org/avform.htm#Dist */
+    double distance = 2*asin(sqrt(pow(sin((origin.lat-destination.lat)/2.0),2.0)+cos(origin.lat)*cos(destination.lat)*pow(sin((origin.lon-destination.lon)/2.0),2.0)));
+
+    /* convert radial distance to meters (1 deg = 60 nmi, 1 nmi = 1852 m) */
+    distance = rad_to_deg(distance) * 60.0 * 1852.0;
+
+    /* return result */
+    return distance;
+}
+
+
+struct coord Processor::coord_dist_radial(struct coord origin, double distance, double radial)
+{
+    /* convert parameters to radians */
+    origin.lat = deg_to_rad(origin.lat);
+    origin.lon = deg_to_rad(origin.lon);
+
+    /* invert radial to use positive clockwise angle and convert to radians */
+    radial = deg_to_rad(-radial);
+
+    /* convert distance to angular distance (1 deg = 60 nmi, 1 m = 0.000539957 nmi) */
+    distance = deg_to_rad(distance * 0.000539957 / 60.0);
+
+    /* create struct for result coordinate */
+    struct coord result;
+
+    /* formulas from http://www.edwilliams.org/avform.htm#LL */
+    result.lat = asin(sin(origin.lat)*cos(distance)+cos(origin.lat)*sin(distance)*cos(radial));
+    result.lon = fmod(origin.lon-atan2(sin(radial)*sin(distance)*cos(origin.lat),cos(distance)-sin(origin.lat)*sin(result.lat))+M_PI,2.0*M_PI)-M_PI;
+
+    /* convert result coordinate to degrees */
+    result.lat = rad_to_deg(result.lat);
+    result.lon = rad_to_deg(result.lon);
+
+    /* return result pointer */
+    return result;
+}
+
+
+double Processor::coord_course(struct coord origin, struct coord destination)
+{
+    /* convert coordinates to radians */
+    origin.lat=deg_to_rad(origin.lat);
+    origin.lon=deg_to_rad(origin.lon);
+    destination.lat=deg_to_rad(destination.lat);
+    destination.lon=deg_to_rad(destination.lon);
+
+    /* formula from http://www.edwilliams.org/avform.htm#Crs */
+    double course = fmod(atan2(sin(origin.lon-destination.lon)*cos(destination.lat),cos(origin.lat)*sin(destination.lat)-sin(origin.lat)*cos(destination.lat)*cos(origin.lon-destination.lon)),2*M_PI);
+
+    /* convert course to degrees and add offset for standard course range*/
+    course = -rad_to_deg(course);
+
+    // flip negative values around
+    if (course < 0.0)
+        course = course + 360.0;
+
+    /* return result */
+    return course;
 }
