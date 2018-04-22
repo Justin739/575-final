@@ -196,14 +196,15 @@ void monitorStop(Capturer* cap) {
 }
 
 int main(int argc, char* argv[]) {
-    /*
+
     Capturer cap("/dev/video1", "recorded_video.avi", "frame_times.csv");
     std::thread stopper_thread(monitorStop, &cap);
 
     std::cout << "--- Starting capture ---" << std::endl;
     cap.startCapture();
     stopper_thread.join();
-     */
+
+    // Start processing
 
     Processor proc("recorded_video.avi", "processed_video.avi", "frame_times.csv", "raw_log.txt");
     proc.processData();

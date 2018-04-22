@@ -65,6 +65,7 @@ void Capturer::startCapture() {
     timeval tv;
 
     std::cout << "--- Capture started ---" << std::endl;
+    running = true;
 
     // Continuously save frames until the webcam has closed
     while (input_cap.read(frame) && running) {
