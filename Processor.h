@@ -22,6 +22,7 @@ class Processor {
     std::string frameTimesFile;
     std::string gpsFile;
     struct coord spots[44];
+    std::vector<std::string> validLicensePlates;
 
 public:
     Processor(std::string inputVideo, std::string outputVideo, std::string frames, std::string gps);
@@ -37,6 +38,7 @@ private:
     double coord_distance(struct coord origin, struct coord destination);
     struct coord coord_interpolate(struct coord prev, struct coord next, double timenow);
     struct coord getCarPosition(std::vector<struct positionReading> positionResults, cv::Rect roiRect, double frameWidthX);
+    std::string numToString(double value, int precision);
 };
 
 

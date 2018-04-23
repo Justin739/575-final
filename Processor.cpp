@@ -10,6 +10,113 @@ Processor::Processor(std::string inputVideo, std::string outputVideo, std::strin
     frameTimesFile = frames;
     gpsFile = gps;
 
+    validLicensePlates = {
+            "180JUH",
+            "GNR158",
+            "BIS341",
+            "GXG314",
+            "N499681",
+            "ISUO185",
+            "FAB341",
+            "CYU265",
+            "DZF724",
+            "10T789",
+            "206WHL",
+            "DJY636",
+            "DPL169",
+            "668UWY",
+            "FLU422",
+            "721GXP",
+            "BMC075",
+            "FLB939",
+            "EPE057",
+            "DTV246",
+            "Q381706",
+            "10473",
+            "AK28886",
+            "PHA8805",
+            "874RDK",
+            "DNL594",
+            "4A4408",
+            "N249205",
+            "GCG014",
+            "195YEH",
+            "VK5918",
+            "FLG619",
+            "CFW185",
+            "GJP581",
+            "40864",
+            "962UHC",
+            "AN49257",
+            "900WET",
+            "143WVL",
+            "FNE430",
+            "14656E",
+            "GKY057",
+            "VPD954",
+            "GSB239",
+            "FOJ500",
+            "E34OO",
+            "62W638",
+            "DVE905",
+            "BYK929",
+            "Q359607",
+            "GKY127",
+            "EZT330",
+            "GGX274",
+            "EUV858",
+            "DTV625",
+            "EJL717",
+            "FAB888",
+            "OMAN95",
+            "EFK622",
+            "EJF992",
+            "GKX879",
+            "112799",
+            "FFY018",
+            "CTZ1202",
+            "913JXH",
+            "K7201",
+            "BML066",
+            "728RJJ",
+            "V751523",
+            "DOR596",
+            "Q665430",
+            "Z695188",
+            "FH054",
+            "AIH570",
+            "043JRU",
+            "902RPZ",
+            "Q650942",
+            "982HTP",
+            "DTT867",
+            "977AHS",
+            "GMV237",
+            "EXF277",
+            "AA95648",
+            "GSB248",
+            "DBG431",
+            "286MMA",
+            "J417510",
+            "4F48U0",
+            "KP2G5Z",
+            "EAG257",
+            "H655043",
+            "GTT728",
+            "453VEA",
+            "778ZO",
+            "350KJL",
+            "GPG214",
+            "113RVW",
+            "887YKA",
+            "857WTP",
+            "DNN359",
+            "FLC481",
+            "GGX644",
+            "CAG182",
+            "AF76748",
+            "CKA032"};
+
     srand(time(NULL));
 
 // 0 - 9
@@ -290,6 +397,9 @@ void Processor::processData() {
     int plateHoldDuration = 0;
     double finalCarLatResult = 0;
     double finalCarLonResult = 0;
+    cv::Point detectedCarLocation;
+    int likelyParkingSpot;
+    double likelyParkingSpot_c;
 
     double mapLatOrigin_1 = 42.026269;
     double mapLonOrigin_1 = -93.652374;
@@ -301,18 +411,6 @@ void Processor::processData() {
     std::vector<cv::Point> drivenPath;
 
     while (inputCapture.read(frame)) {
-        if (currFrame < 300) {
-            currFrame++;
-            std::getline(frameFileStream, frameLine);
-            continue;
-        }
-
-        // Place black frames to hold frame information
-        cv::rectangle(frame, cv::Point(10, 10), cv::Point(300, 125), cv::Scalar(0, 0, 0), CV_FILLED);
-        cv::rectangle(frame, cv::Point(10, 10), cv::Point(300, 125), cv::Scalar(255, 255, 255), 2);
-        cv::rectangle(frame, cv::Point((1920 - 10), 10), cv::Point((1920 - 300), 125), cv::Scalar(0, 0, 0), CV_FILLED);
-        cv::rectangle(frame, cv::Point((1920 - 10), 10), cv::Point((1920 - 300), 125), cv::Scalar(255, 255, 255), 2);
-
         std::getline(frameFileStream, frameLine);
         struct frameData currFrameData = getFrameData(frameLine);
 
@@ -328,7 +426,20 @@ void Processor::processData() {
             nextGPSData = getGPSData(gpsLine);
         }
 
+
+        // Skip to the starting frame
+        if (currFrame < 1300) {
+            currFrame++;
+            continue;
+        }
+
         struct coord currentPos = coord_interpolate(prevGPSData, nextGPSData, currFrameData.frameTime);
+
+        // Place black frames to hold frame information
+        cv::rectangle(frame, cv::Point(10, 10), cv::Point(300, 145), cv::Scalar(0, 0, 0), CV_FILLED);
+        cv::rectangle(frame, cv::Point(10, 10), cv::Point(300, 145), cv::Scalar(255, 255, 255), 2);
+        cv::rectangle(frame, cv::Point((1920 - 10), 10), cv::Point((1920 - 300), 165), cv::Scalar(0, 0, 0), CV_FILLED);
+        cv::rectangle(frame, cv::Point((1920 - 10), 10), cv::Point((1920 - 300), 165), cv::Scalar(255, 255, 255), 2);
         alpr::AlprResults frameResults = openalpr.recognize(frame.data, 3, frame.cols, frame.rows, roi);
 
         cv::rectangle(frame, cv::Point((1920/2 - 500/2-25), 10), cv::Point(1920/2+500/2+25, 180), cv::Scalar(0, 0, 0), CV_FILLED);
@@ -364,7 +475,7 @@ void Processor::processData() {
 
         double xMap = -(currentPos.lon - mapLonOrigin_1) * scalingFactor + offsetMapX;
         double yMap = (currentPos.lat - mapLatOrigin_1) * scalingFactor + offsetMapY;
-        std::cout << xMap << "," << yMap << std::endl;
+        //std::cout << xMap << "," << yMap << std::endl;
         drivenPath.push_back(cv::Point((int) xMap, (int) yMap));
         cv::Point lastPoint = drivenPath[0];
 
@@ -407,7 +518,8 @@ void Processor::processData() {
 
             currText = "License Plate: " + licensePlateText;
             cv::putText(frame, currText, cv::Point((1920 - 280), 40), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
-            currText = "Confidence: " + std::to_string(confidenceLevel) + "%";
+            currText = "Confidence: " + numToString(confidenceLevel, 3) + "%";
+            //currText = "Confidence: " + std::to_string(confidenceLevel) + "%";
             plateHoldDuration = 0;
 
             if (confidenceLevel >= 90) {
@@ -439,12 +551,20 @@ void Processor::processData() {
         if (plateHoldDuration > 0) {
             currText = "License Plate: " + finalPlateResult;
             cv::putText(frame, currText, cv::Point((1920 - 280), 40), cv::FONT_HERSHEY_PLAIN, 1, finalPlateColor);
-            currText = "Confidence: " + std::to_string(finalPlateConfidence) + "%";
+            currText = "Confidence: " + numToString(finalPlateConfidence, 3) + "%";
+            //currText = "Confidence: " + std::to_string(finalPlateConfidence) + "%";
             cv::putText(frame, currText, cv::Point((1920 - 280), 60), cv::FONT_HERSHEY_PLAIN, 1, finalPlateColor);
             currText = "Car Latitude: " + std::to_string(finalCarLatResult);
             cv::putText(frame, currText, cv::Point((1920 - 280), 80), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
             currText = "Car Longitude: " + std::to_string(finalCarLonResult);
             cv::putText(frame, currText, cv::Point((1920 - 280), 100), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+            cv::circle(frame, detectedCarLocation, 2, cv::Scalar(0, 255, 255), CV_FILLED);
+            currText = "Spot #: " + std::to_string(likelyParkingSpot);
+            cv::putText(frame, currText, cv::Point((1920 - 280), 120), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+            currText = "Spot Confidence: " + numToString(likelyParkingSpot_c, 3) + "%";
+            //currText = "Spot Confidence: " + std::to_string(likelyParkingSpot_c) + "%";
+            cv::putText(frame, currText, cv::Point((1920 - 280), 140), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+
             plateHoldDuration--;
         }
 
@@ -460,6 +580,12 @@ void Processor::processData() {
         cv::putText(frame, currText, cv::Point(20, 80), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
         currText = "Longitude: " + std::to_string(currentPos.lon);
         cv::putText(frame, currText, cv::Point(20, 100), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+        double distance = coord_distance(prevGPSData, nextGPSData);
+        double timeDiff = nextGPSData.timestamp - prevGPSData.timestamp;
+        double carSpeed = (distance / timeDiff) * 2.23694;
+        currText = "Speed: " + numToString(carSpeed, 2) + " mph";
+        //currText = "Speed: " + std::to_string(carSpeed) + " mph";
+        cv::putText(frame, currText, cv::Point(20, 120), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
 
         if (frameResults.plates.size() > 0) {
             foundPlateCounter++;
@@ -477,6 +603,10 @@ void Processor::processData() {
                 finalCarLatResult = carPosition.lat;
                 finalCarLonResult = carPosition.lon;
 
+                double carXMap = -(carPosition.lon - mapLonOrigin_1) * scalingFactor + offsetMapX;
+                double carYMap = (carPosition.lat - mapLatOrigin_1) * scalingFactor + offsetMapY;
+
+                detectedCarLocation = cv::Point((int) carXMap, (int) carYMap);
 
                 int i;
                 double min_dist = 1000000000.0;
@@ -490,14 +620,24 @@ void Processor::processData() {
                     }
                 }
 
-                // TODO: MAke sure to check against local database!
+                likelyParkingSpot = index_dist;
 
-                spots[index_dist].valid = rand() % 2 + 1;
+                if (min_dist > 2.7) {
+                    min_dist = 2.7;
+                }
 
+                likelyParkingSpot_c = (1 - ((min_dist) / (2.7))) * 100.0;
 
+                if (likelyParkingSpot_c > 100.0) {
+                    likelyParkingSpot_c = 100.0;
+                }
 
-                // TODO: Position confidence
-
+                // Check if the license plate found has a permit or not
+                if (std::find(validLicensePlates.begin(), validLicensePlates.end(), avgPlateResult.plateText) != validLicensePlates.end()) {
+                    spots[index_dist].valid = 1;
+                } else {
+                    spots[index_dist].valid = 2;
+                }
 
                 std::cout << "Confidence: " << avgPlateResult.confidence << std::endl;
                 std::cout << "Final Result: " << avgPlateResult.plateText << std::endl;
@@ -511,13 +651,14 @@ void Processor::processData() {
                 // Show the final plate result (green/yellow/red)
                 currText = "License Plate: " + avgPlateResult.plateText;
                 cv::putText(frame, currText, cv::Point((1920 - 280), 40), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
-                currText = "Confidence: " + std::to_string(avgPlateResult.confidence) + "%";
+                currText = "Confidence: " + numToString(avgPlateResult.confidence, 3) + "%";
+                //currText = "Confidence: " + std::to_string(avgPlateResult.confidence) + "%";
                 finalPlateConfidence = avgPlateResult.confidence;
 
                 if (avgPlateResult.confidence >= 90) {
                     // green
                     finalPlateColor = cv::Scalar(0, 255, 0);
-                } else if (avgPlateResult.confidence >= 80) {
+                } else if (avgPlateResult.confidence >= 70) {
                     // yellow
                     finalPlateColor = cv::Scalar(0, 255, 255);
                 } else {
@@ -559,7 +700,7 @@ struct coord Processor::getCarPosition(std::vector<struct positionReading> posit
     for (struct positionReading platePos : positionResults) {
         double zDist = platePos.distance.distance;
         double xDist = ((platePos.center.x - (frameWidthX / 2)) * 0.3048) / platePos.distance.width;
-        double theta = atan(xDist / zDist) * (180.0 / M_PI);
+        double theta = (atan(xDist / zDist) * (180.0 / M_PI)) - 30;
         //std::cout << theta << std::endl;
         double distToPlate = cos(deg_to_rad(theta)) * zDist;
         struct coord origin;
@@ -575,7 +716,7 @@ struct coord Processor::getCarPosition(std::vector<struct positionReading> posit
 
         struct coord currPlatePos = coord_dist_radial(origin, distToPlate, radial);
         radial -= theta;
-        struct coord currCarPosition = coord_dist_radial(currPlatePos, 2.0, radial);
+        struct coord currCarPosition = coord_dist_radial(currPlatePos, 2.5, radial);
         //std::cout << "Latitude: " << std::setprecision(15) << currCarPosition.lat << ", Longitude: " << currCarPosition.lon << std::endl;
 
         // Average latitude
@@ -823,4 +964,10 @@ double Processor::coord_course(struct coord origin, struct coord destination)
 
     /* return result */
     return course;
+}
+
+std::string Processor::numToString(double value, int precision) {
+    std::ostringstream out;
+    out << std::setprecision(precision) << value;
+    return out.str();
 }

@@ -10,7 +10,6 @@
 #define deg_to_rad(deg) (deg * M_PI / 180.0)
 #define rad_to_deg(rad) (rad * 180.0 / M_PI)
 
-
 struct frameData {
     int frameNum;
     double frameTime;
@@ -43,6 +42,5 @@ struct positionReading {
     struct distanceReading distance;
     double course;
 };
-
 
 #endif //INC_575_FINAL_PROJECT_UTILS_H
