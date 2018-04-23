@@ -9,6 +9,198 @@ Processor::Processor(std::string inputVideo, std::string outputVideo, std::strin
     outputVideoFile = outputVideo;
     frameTimesFile = frames;
     gpsFile = gps;
+
+    srand(time(NULL));
+
+// 0 - 9
+
+    for(int i = 0; i < 44; i++)
+    {
+        spots[i].valid = 0;
+    }
+
+    spots[0].lat = 42.026294;
+    spots[0].lon = -93.653913;
+
+    spots[1].lat = 42.026294;
+    spots[1].lon = -93.653880;
+
+
+    spots[2].lat = 42.026294;
+    spots[2].lon = -93.653847;
+
+
+    spots[3].lat = 42.026294;
+    spots[3].lon = -93.653814;
+
+
+    spots[4].lat = 42.026294;
+    spots[4].lon = -93.653780;
+
+
+    spots[5].lat = 42.026294;
+    spots[5].lon = -93.653745;
+
+
+    //
+    spots[6].lat = 42.026294;
+    spots[6].lon = -93.653681;
+
+
+    spots[7].lat = 42.026294;
+    spots[7].lon = -93.653645;
+
+
+    spots[8].lat = 42.026294;
+    spots[8].lon = -93.653612;
+
+
+    spots[9].lat = 42.026294;
+    spots[9].lon = -93.653581;
+
+
+    // 10 - 19
+
+
+    spots[10].lat = 42.026294;
+    spots[10].lon = -93.653551;
+
+
+    spots[11].lat = 42.026294;
+    spots[11].lon = -93.653515;
+
+
+    spots[12].lat = 42.026294;
+    spots[12].lon = -93.653480;
+
+
+    spots[13].lat = 42.026294;
+    spots[13].lon = -93.653449;
+
+
+    spots[14].lat = 42.026294;
+    spots[14].lon = -93.653416;
+
+
+    spots[15].lat = 42.026294;
+    spots[15].lon = -93.653381;
+
+
+    spots[16].lat = 42.026294;
+    spots[16].lon = -93.653350;
+
+
+    spots[17].lat = 42.026294;
+    spots[17].lon = -93.653319;
+
+
+    spots[18].lat = 42.026294;
+    spots[18].lon = -93.653284;
+
+
+    spots[19].lat = 42.026294;
+    spots[19].lon = -93.653219;
+
+
+    // 20-29
+
+
+    spots[20].lat = 42.026294;
+    spots[20].lon = -93.653186;
+
+
+    spots[21].lat = 42.026294;
+    spots[21].lon = -93.653152;
+
+
+    spots[22].lat = 42.026294;
+    spots[22].lon = -93.653119;
+
+
+    spots[23].lat = 42.026294;
+    spots[23].lon = -93.653084;
+
+
+    spots[24].lat = 42.026294;
+    spots[24].lon = -93.653054;
+
+
+    spots[25].lat = 42.026294;
+    spots[25].lon = -93.653020;
+
+
+    spots[26].lat = 42.026294;
+    spots[26].lon = -93.652987;
+
+
+    spots[27].lat = 42.026294;
+    spots[27].lon = -93.652955;
+
+
+    spots[28].lat = 42.026294;
+    spots[28].lon = -93.652921;
+
+
+    spots[29].lat = 42.026294;
+    spots[29].lon = -93.652888;
+
+
+    // 30-39
+    spots[30].lat = 42.026294;
+    spots[30].lon = -93.652853;
+
+
+    spots[31].lat = 42.026294;
+    spots[31].lon = -93.652786;
+
+
+    spots[32].lat = 42.026294;
+    spots[32].lon = -93.652753;
+
+
+    spots[33].lat = 42.026294;
+    spots[33].lon = -93.652721;
+
+
+    spots[34].lat = 42.026294;
+    spots[34].lon = -93.652686;
+
+
+    spots[35].lat = 42.026294;
+    spots[35].lon = -93.652655;
+
+
+    spots[36].lat = 42.026294;
+    spots[36].lon = -93.652622;
+
+
+    spots[37].lat = 42.026294;
+    spots[37].lon = -93.652588;
+
+
+    spots[38].lat = 42.026294;
+    spots[38].lon = -93.652553;
+
+
+    spots[39].lat = 42.026294;
+    spots[39].lon = -93.652522;
+
+
+    // 40-43
+    spots[40].lat = 42.026294;
+    spots[40].lon = -93.652489;
+
+
+    spots[41].lat = 42.026294;
+    spots[41].lon = -93.652456;
+
+
+    spots[42].lat = 42.026294;
+    spots[42].lon = -93.652423;
+
+
+    spots[43].lat = 42.026294;
+    spots[43].lon = -93.652388;
 }
 
 void Processor::processData() {
@@ -139,19 +331,49 @@ void Processor::processData() {
         struct coord currentPos = coord_interpolate(prevGPSData, nextGPSData, currFrameData.frameTime);
         alpr::AlprResults frameResults = openalpr.recognize(frame.data, 3, frame.cols, frame.rows, roi);
 
-        cv::rectangle(frame, cv::Point(10, (1080 - 510)), cv::Point(510, 1070), cv::Scalar(0, 0, 0), CV_FILLED);
-        cv::rectangle(frame, cv::Point(10, (1080 - 510)), cv::Point(510, 1070), cv::Scalar(255, 255, 255), 2);
+        cv::rectangle(frame, cv::Point((1920/2 - 500/2-25), 10), cv::Point(1920/2+500/2+25, 180), cv::Scalar(0, 0, 0), CV_FILLED);
+        cv::rectangle(frame, cv::Point((1920/2 - 500/2-25), 10), cv::Point(1920/2+500/2+25, 180), cv::Scalar(255, 255, 255), 2);
 
-        double xMap = (currentPos.lon - mapLonOrigin_1) * scalingFactor;
-        double yMap = (currentPos.lat - mapLatOrigin_1) * scalingFactor;
+
+        int offsetMapX =  (1920 / 2 + 270-25);
+        int offsetMapY = (500 / 2) - 100;
+
+        int spotsIter;
+        for (spotsIter = 0; spotsIter < 44; spotsIter++)
+        {
+            if (spots[spotsIter].valid == 0) {
+                cv::circle(frame, cv::Point(-(spots[spotsIter].lon - mapLonOrigin_1) * scalingFactor + offsetMapX,
+                                            (spots[spotsIter].lat - mapLatOrigin_1) * scalingFactor + offsetMapY), 3,
+                           cv::Scalar(255, 0, 0), 1);
+
+            }
+            else if (spots[spotsIter].valid == 1)
+            {
+                cv::circle(frame, cv::Point(-(spots[spotsIter].lon - mapLonOrigin_1) * scalingFactor + offsetMapX,
+                                            (spots[spotsIter].lat - mapLatOrigin_1) * scalingFactor + offsetMapY), 3,
+                           cv::Scalar(0, 255, 0), CV_FILLED);
+            }
+            else {
+                cv::circle(frame, cv::Point(-(spots[spotsIter].lon - mapLonOrigin_1) * scalingFactor + offsetMapX,
+                                            (spots[spotsIter].lat - mapLatOrigin_1) * scalingFactor + offsetMapY), 3,
+                           cv::Scalar(0, 0, 255), CV_FILLED);
+            }
+
+        }
+
+
+        double xMap = -(currentPos.lon - mapLonOrigin_1) * scalingFactor + offsetMapX;
+        double yMap = (currentPos.lat - mapLatOrigin_1) * scalingFactor + offsetMapY;
         std::cout << xMap << "," << yMap << std::endl;
         drivenPath.push_back(cv::Point((int) xMap, (int) yMap));
         cv::Point lastPoint = drivenPath[0];
 
         for (cv::Point newPoint : drivenPath) {
-            line(frame, lastPoint, newPoint, cv::Scalar(0, 0, 255));
+            line(frame, lastPoint, newPoint, cv::Scalar(0, 0, 255), 2);
             lastPoint = newPoint;
         }
+
+        cv::circle(frame, lastPoint, 2, cv::Scalar(255, 255, 255), CV_FILLED);
 
         for (int i = 0; i < frameResults.plates.size(); i++) {
             alpr::AlprPlateResult currPlate = frameResults.plates[i];
@@ -254,6 +476,24 @@ void Processor::processData() {
                 cv::putText(frame, currText, cv::Point((1920 - 280), 100), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
                 finalCarLatResult = carPosition.lat;
                 finalCarLonResult = carPosition.lon;
+
+
+                int i;
+                double min_dist = 1000000000.0;
+                int index_dist = 0;
+                for (i =0; i < 44; i++){
+                    double dist = coord_distance(carPosition, spots[i]);
+                    if (dist < min_dist)
+                    {
+                        min_dist = dist;
+                        index_dist = i;
+                    }
+                }
+
+                // TODO: MAke sure to check against local database!
+
+                spots[index_dist].valid = rand() % 2 + 1;
+
 
 
                 // TODO: Position confidence

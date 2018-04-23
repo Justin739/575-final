@@ -21,6 +21,7 @@ class Processor {
     std::string outputVideoFile;
     std::string frameTimesFile;
     std::string gpsFile;
+    struct coord spots[44];
 
 public:
     Processor(std::string inputVideo, std::string outputVideo, std::string frames, std::string gps);
