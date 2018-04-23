@@ -35,6 +35,7 @@ private:
     struct coord coord_dist_radial(struct coord origin, double distance, double radial);
     double coord_distance(struct coord origin, struct coord destination);
     struct coord coord_interpolate(struct coord prev, struct coord next, double timenow);
+    struct coord getCarPosition(std::vector<struct positionReading> positionResults, cv::Rect roiRect, double frameWidthX);
 };
 
 

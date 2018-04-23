@@ -30,6 +30,8 @@ struct plateResult {
 struct distanceReading {
     double distance;
     double sizeRatio;
+    double height;
+    double width;
 };
 
 struct positionReading {
@@ -38,6 +40,7 @@ struct positionReading {
     double time;
     cv::Point center;
     struct distanceReading distance;
+    double course;
 };
 
 #endif //INC_575_FINAL_PROJECT_UTILS_H
