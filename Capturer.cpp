@@ -50,10 +50,10 @@ void Capturer::startCapture() {
 
     // Continuously save frames until the webcam has closed
     while (input_cap.read(frame) && running) {
-        output_cap.write(frame);
         gettimeofday(&tv, nullptr);
         double currTime = tv.tv_sec + (tv.tv_usec / 1000000.0);
         csvLog << frameCounter << "," << std::setprecision(20) << currTime << "\n";
+        output_cap.write(frame);
         frameCounter++;
     }
 

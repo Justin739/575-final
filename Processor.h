@@ -16,12 +16,14 @@
 #include <algorithm>
 #include "utils.h"
 
+const int numSpots = 82;
+
 class Processor {
     std::string inputVideoFile;
     std::string outputVideoFile;
     std::string frameTimesFile;
     std::string gpsFile;
-    struct coord spots[44];
+    struct coord spots[numSpots];
     std::vector<std::string> validLicensePlates;
 
 public:

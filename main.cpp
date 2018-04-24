@@ -21,7 +21,6 @@ int main(int argc, char* argv[]) {
     cap.startCapture();
     stopper_thread.join();
     */
-
     // Start processing
     Processor proc("recorded_video.avi", "processed_video.avi", "frame_times.csv", "raw_log.txt");
     proc.processData();

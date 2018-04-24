@@ -11,121 +11,48 @@ Processor::Processor(std::string inputVideo, std::string outputVideo, std::strin
     gpsFile = gps;
 
     validLicensePlates = {
-            "180JUH",
-            "GNR158",
-            "BIS341",
-            "GXG314",
-            "N499681",
-            "ISUO185",
-            "FAB341",
-            "CYU265",
-            "DZF724",
-            "10T789",
-            "206WHL",
-            "DJY636",
-            "DPL169",
-            "668UWY",
-            "FLU422",
-            "721GXP",
-            "BMC075",
-            "FLB939",
-            "EPE057",
-            "DTV246",
-            "Q381706",
-            "10473",
-            "AK28886",
-            "PHA8805",
-            "874RDK",
-            "DNL594",
-            "4A4408",
-            "N249205",
-            "GCG014",
-            "195YEH",
-            "VK5918",
-            "FLG619",
-            "CFW185",
-            "GJP581",
-            "40864",
-            "962UHC",
-            "AN49257",
-            "900WET",
-            "143WVL",
-            "FNE430",
-            "14656E",
-            "GKY057",
-            "VPD954",
-            "GSB239",
-            "FOJ500",
-            "E34OO",
-            "62W638",
-            "DVE905",
-            "BYK929",
-            "Q359607",
-            "GKY127",
-            "EZT330",
-            "GGX274",
-            "EUV858",
-            "DTV625",
-            "EJL717",
-            "FAB888",
-            "OMAN95",
-            "EFK622",
-            "EJF992",
-            "GKX879",
-            "112799",
-            "FFY018",
-            "CTZ1202",
-            "913JXH",
-            "K7201",
-            "BML066",
-            "728RJJ",
-            "V751523",
-            "DOR596",
-            "Q665430",
-            "Z695188",
-            "FH054",
-            "AIH570",
-            "043JRU",
-            "902RPZ",
-            "Q650942",
-            "982HTP",
-            "DTT867",
-            "977AHS",
-            "GMV237",
-            "EXF277",
-            "AA95648",
-            "GSB248",
-            "DBG431",
-            "286MMA",
-            "J417510",
-            "4F48U0",
-            "KP2G5Z",
-            "EAG257",
-            "H655043",
-            "GTT728",
-            "453VEA",
-            "778ZO",
-            "350KJL",
-            "GPG214",
-            "113RVW",
-            "887YKA",
-            "857WTP",
-            "DNN359",
-            "FLC481",
-            "GGX644",
-            "CAG182",
-            "AF76748",
-            "CKA032"};
+        "DCY442",
+        "GCG114",
+        "DPL169",
+        "GNP771",
+        "DZB254",
+        "CXB809",
+        "155ENZ",
+        "362XCF",
+        "346WDT",
+        "V376451",
+        "6BFC995",
+        "DZB418",
+        "DNN768",
+        "GGY262",
+        "CTZ1202",
+        "CXC908",
+        "CMM284",
+        "CFX586",
+        "GUE047",
+        "AW450",
+        "DTT305",
+        "EQM859",
+        "GQU181",
+        "7CMX596",
+        "015ZMJ",
+        "CXE967",
+        "69444",
+        "PHA8805",
+        "396YJL",
+        "CXB889",
+        "GUE847",
+        "AW45B",
+        "PHABB05",
+        "815ZMJ"
+    };
 
-    srand(time(NULL));
-
-// 0 - 9
-
-    for(int i = 0; i < 44; i++)
+    for (int i = 0; i < numSpots; i++)
     {
         spots[i].valid = 0;
     }
 
+    // 0 - 9
     spots[0].lat = 42.026294;
     spots[0].lon = -93.653913;
 
@@ -293,7 +220,7 @@ Processor::Processor(std::string inputVideo, std::string outputVideo, std::strin
     spots[39].lon = -93.652522;
 
 
-    // 40-43
+    // 40-49
     spots[40].lat = 42.026294;
     spots[40].lon = -93.652489;
 
@@ -308,6 +235,167 @@ Processor::Processor(std::string inputVideo, std::string outputVideo, std::strin
 
     spots[43].lat = 42.026294;
     spots[43].lon = -93.652388;
+
+
+    //////////////////////////////
+    spots[44].lat = 42.026405;
+    spots[44].lon = -93.652388;
+
+
+    spots[45].lat = 42.026405;
+    spots[45].lon = -93.652435;
+
+
+    spots[46].lat = 42.026405;
+    spots[46].lon = -93.652469;
+
+
+    spots[47].lat = 42.026405;
+    spots[47].lon = -93.652523;
+
+
+    spots[48].lat = 42.026405;
+    spots[48].lon = -93.652557;
+
+
+    spots[49].lat = 42.026405;
+    spots[49].lon = -93.652589;
+
+
+    // 50-59
+    spots[50].lat = 42.026405;
+    spots[50].lon = -93.652624;
+
+
+    spots[51].lat = 42.026405;
+    spots[51].lon = -93.652656;
+
+
+    spots[52].lat = 42.026405;
+    spots[52].lon = -93.652690;
+
+
+    spots[53].lat = 0;
+    spots[53].lon = 0;
+
+
+    spots[54].lat = 42.026405;
+    spots[54].lon = -93.652754;
+
+
+    spots[55].lat = 42.026405;
+    spots[55].lon = -93.652789;
+
+
+    spots[56].lat = 42.026405;
+    spots[56].lon = -93.652822;
+
+
+    spots[57].lat = 42.026405;
+    spots[57].lon = -93.652856;
+
+
+    spots[58].lat = 42.026405;
+    spots[58].lon = -93.652888;
+
+
+    spots[59].lat = 42.026405;
+    spots[59].lon = -93.652921;
+
+
+    // 60-69
+
+
+    spots[60].lat = 42.026405;
+    spots[60].lon = -93.652953;
+
+
+    spots[61].lat = 42.026405;
+    spots[61].lon = -93.652986;
+
+
+    spots[62].lat = 42.026405;
+    spots[62].lon = -93.653021;
+
+
+    spots[63].lat = 42.026405;
+    spots[63].lon = -93.653053;
+
+
+    spots[64].lat = 42.026405;
+    spots[64].lon = -93.653086;
+
+
+    spots[65].lat = 42.026405;
+    spots[65].lon = -93.653118;
+
+
+    spots[66].lat = 42.026405;
+    spots[66].lon = -93.653154;
+
+
+    spots[67].lat = 42.026405;
+    spots[67].lon = -93.653187;
+
+
+    spots[68].lat = 42.026405;
+    spots[68].lon = -93.653217;
+
+
+    spots[69].lat = 42.026405;
+    spots[69].lon = -93.653276;
+
+
+    // 70-79
+
+
+    spots[70].lat = 42.026405;
+    spots[70].lon = -93.653309;
+
+
+    spots[71].lat = 42.026405;
+    spots[71].lon = -93.653342;
+
+
+    spots[72].lat = 42.026405;
+    spots[72].lon = -93.653375;
+
+
+    spots[73].lat = 42.026405;
+    spots[73].lon = -93.653410;
+
+
+    spots[74].lat = 42.026405;
+    spots[74].lon = -93.653445;
+
+
+    spots[75].lat = 42.026405;
+    spots[75].lon = -93.653479;
+
+
+    spots[76].lat = 42.026405;
+    spots[76].lon = -93.653513;
+
+
+    spots[77].lat = 42.026405;
+    spots[77].lon = -93.653547;
+
+
+    spots[78].lat = 42.026405;
+    spots[78].lon = -93.653578;
+
+
+    spots[79].lat = 42.026405;
+    spots[79].lon = -93.653612;
+
+
+    // 80-81
+    spots[80].lat = 42.026405;
+    spots[80].lon = -93.653646;
+
+
+    spots[81].lat = 42.026405;
+    spots[81].lon = -93.653683;
 }
 
 void Processor::processData() {
@@ -380,9 +468,9 @@ void Processor::processData() {
 
     inputCapture.read(frame);
 
-    int width = 500;
-    int height = 700;
-    cv::Rect roiRect((frame.cols / 2) - (width / 2), frame.rows - height, width, height);
+    int width = 850;
+    int height = 650;
+    cv::Rect roiRect((frame.cols / 2) - (width / 2), frame.rows - height - 150, width, height);
     roi.push_back(alpr::AlprRegionOfInterest(roiRect.x, roiRect.y, roiRect.width, roiRect.height));
 
     int foundPlateCounter = 0;
@@ -400,6 +488,8 @@ void Processor::processData() {
     cv::Point detectedCarLocation;
     int likelyParkingSpot;
     double likelyParkingSpot_c;
+    int totalCarsScanned = 0;
+    int violatorsScanned = 0;
 
     double mapLatOrigin_1 = 42.026269;
     double mapLonOrigin_1 = -93.652374;
@@ -426,12 +516,13 @@ void Processor::processData() {
             nextGPSData = getGPSData(gpsLine);
         }
 
-
+        /*
         // Skip to the starting frame
-        if (currFrame < 1300) {
+        if (currFrame < 1800) {
             currFrame++;
             continue;
         }
+        */
 
         struct coord currentPos = coord_interpolate(prevGPSData, nextGPSData, currFrameData.frameTime);
 
@@ -444,13 +535,17 @@ void Processor::processData() {
 
         cv::rectangle(frame, cv::Point((1920/2 - 500/2-25), 10), cv::Point(1920/2+500/2+25, 180), cv::Scalar(0, 0, 0), CV_FILLED);
         cv::rectangle(frame, cv::Point((1920/2 - 500/2-25), 10), cv::Point(1920/2+500/2+25, 180), cv::Scalar(255, 255, 255), 2);
+        currText = "Total: " + std::to_string(totalCarsScanned);
+        cv::putText(frame, currText, cv::Point((1920/2 - 500/2) + 10, 50), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
+        currText = "Violators: " + std::to_string(violatorsScanned);
+        cv::putText(frame, currText, cv::Point((1920/2 + 500/2) - 120, 50), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(255, 255, 255));
 
 
         int offsetMapX =  (1920 / 2 + 270-25);
         int offsetMapY = (500 / 2) - 100;
 
         int spotsIter;
-        for (spotsIter = 0; spotsIter < 44; spotsIter++)
+        for (spotsIter = 0; spotsIter < numSpots; spotsIter++)
         {
             if (spots[spotsIter].valid == 0) {
                 cv::circle(frame, cv::Point(-(spots[spotsIter].lon - mapLonOrigin_1) * scalingFactor + offsetMapX,
@@ -480,7 +575,7 @@ void Processor::processData() {
         cv::Point lastPoint = drivenPath[0];
 
         for (cv::Point newPoint : drivenPath) {
-            line(frame, lastPoint, newPoint, cv::Scalar(0, 0, 255), 2);
+            line(frame, lastPoint, newPoint, cv::Scalar(100, 100, 100), 1);
             lastPoint = newPoint;
         }
 
@@ -533,7 +628,11 @@ void Processor::processData() {
                 cv::putText(frame, currText, cv::Point((1920 - 280), 60), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(0, 0, 255));
             }
 
-            plateReadings.push_back(currPlate);
+            // Only add the plate reading if the confidence was 80% or higher
+            if (currPlate.bestPlate.overall_confidence > 80.0) {
+                plateReadings.push_back(currPlate);
+            }
+
             struct positionReading currPosition;
             currPosition.distance = plateDistance;
             currPosition.longitude = currentPos.lon;
@@ -611,7 +710,7 @@ void Processor::processData() {
                 int i;
                 double min_dist = 1000000000.0;
                 int index_dist = 0;
-                for (i =0; i < 44; i++){
+                for (i =0; i < numSpots; i++){
                     double dist = coord_distance(carPosition, spots[i]);
                     if (dist < min_dist)
                     {
@@ -632,10 +731,13 @@ void Processor::processData() {
                     likelyParkingSpot_c = 100.0;
                 }
 
+                totalCarsScanned++;
+
                 // Check if the license plate found has a permit or not
                 if (std::find(validLicensePlates.begin(), validLicensePlates.end(), avgPlateResult.plateText) != validLicensePlates.end()) {
                     spots[index_dist].valid = 1;
                 } else {
+                    violatorsScanned++;
                     spots[index_dist].valid = 2;
                 }
 
@@ -696,11 +798,12 @@ struct coord Processor::getCarPosition(std::vector<struct positionReading> posit
     double longitudeAvg = 0;
     double latitudeAvg = 0;
     double scannedTimeStamp = 0;
+    double minAngle = 10;
 
     for (struct positionReading platePos : positionResults) {
         double zDist = platePos.distance.distance;
         double xDist = ((platePos.center.x - (frameWidthX / 2)) * 0.3048) / platePos.distance.width;
-        double theta = (atan(xDist / zDist) * (180.0 / M_PI)) - 30;
+        double theta = (atan(xDist / zDist) * (180.0 / M_PI));
         //std::cout << theta << std::endl;
         double distToPlate = cos(deg_to_rad(theta)) * zDist;
         struct coord origin;
@@ -710,14 +813,22 @@ struct coord Processor::getCarPosition(std::vector<struct positionReading> posit
         origin.valid = 1;
         double radial = platePos.course + 90 + theta;
 
-        if (theta < 1 && theta > -1) {
-            scannedTimeStamp = platePos.time;
-        }
-
+        //struct coord originLead = coord_dist_radial(origin, 0.0, platePos.course);
         struct coord currPlatePos = coord_dist_radial(origin, distToPlate, radial);
         radial -= theta;
         struct coord currCarPosition = coord_dist_radial(currPlatePos, 2.5, radial);
         //std::cout << "Latitude: " << std::setprecision(15) << currCarPosition.lat << ", Longitude: " << currCarPosition.lon << std::endl;
+
+        /*
+        if (abs(theta) < minAngle) {
+            if (platePos.distance.sizeRatio > 1.95 && platePos.distance.sizeRatio < 2.05) {
+                scannedTimeStamp = platePos.time;
+                carPosition.lat = currCarPosition.lat;
+                carPosition.lon = currCarPosition.lon;
+                minAngle = abs(theta);
+            }
+        }
+        */
 
         // Average latitude
         latitudeAvg += currCarPosition.lat;
